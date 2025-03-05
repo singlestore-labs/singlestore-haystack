@@ -4,18 +4,21 @@
 from typing import Any, Dict, Optional
 
 from haystack import component
-from haystack_integrations.document_stores.example_store import ExampleDocumentStore
+
+from haystack_integrations.document_stores.singlestore_haystack import SingleStoreDocumentStore
 
 
 @component
-class ExampleRetriever:
+class SingleStoreRetriever:
     """
-    A component for retrieving documents from an ExampleDocumentStore.
+    A component for retrieving documents from an SingleStoreDocumentStore.
     """
 
-    def __init__(self, document_store: ExampleDocumentStore, filters: Optional[Dict[str, Any]] = None, top_k: int = 10):
+    def __init__(self, document_store: SingleStoreDocumentStore,
+                 filters: Optional[Dict[str, Any]] = None,
+                 top_k: int = 10):
         """
-        Create an ExampleRetriever component. Usually you pass some basic configuration
+        Create an SingleStoreRetriever component. Usually you pass some basic configuration
         parameters to the constructor.
 
         :param document_store: A Document Store object used to retrieve documents
