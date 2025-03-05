@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2023-present John Doe <jd@example.com>
 #
 # SPDX-License-Identifier: Apache-2.0
+import json
 import logging
 import singlestoredb as s2
 from typing import Any, Dict, List, Optional, Literal
@@ -38,6 +39,29 @@ def connection_is_valid(connection: Connection) -> bool:
         return True
     except s2.Error as e:
         return False
+
+
+def escape_tsv(data: str) -> str:
+    if data is not None:
+        return data.replace("\\", "\\\\").replace("\n", "\\n").replace("\t", "\\t")
+    else:
+        return "\\N"
+
+
+def escape_tsv_json(data) -> str:
+    if data is not None:
+        return escape_tsv(json.dumps(data))
+    else:
+        return "\\N"
+
+
+def from_haystack_to_tsv_documents(documents: List[Document]):
+    for document in documents:
+        id = escape_tsv(document.id)
+        content = escape_tsv(document.content)
+        meta = escape_tsv_json(document.meta)
+        embedding = escape_tsv_json(document.embedding)
+        yield "\t".join([id, embedding, content, meta]) + "\n"
 
 
 class SingleStoreDocumentStore:
@@ -235,23 +259,17 @@ class SingleStoreDocumentStore:
         if policy == DuplicatePolicy.NONE:
             policy = DuplicatePolicy.FAIL
 
-        db_documents = self._from_haystack_to_s2_documents(documents)
+        policy_map = {
+            DuplicatePolicy.NONE: "",
+            DuplicatePolicy.FAIL: "",
+            DuplicatePolicy.SKIP: "IGNORE DUPLICATE KEY ERRORS",
+            DuplicatePolicy.OVERWRITE: "REPLACE"
+        }
 
-        if policy == DuplicatePolicy.OVERWRITE:
-            sql_insert = "REPLACE "
-        else:
-            sql_insert = "INSERT "
-
-        sql_insert += f"""INTO {escape_table(self.database_name, self.table_name)}
-(id, embedding, content, meta)
-VALUES (?, ?, ?, ?)
-"""
-
-        if policy == DuplicatePolicy.SKIP:
-            sql_insert += "ON DUPLICATE KEY UPDATE id = id"
+        sql_load_data = f"LOAD DATA LOCAL INFILE ':stream:' {policy_map.get(policy)} INTO TABLE {escape_table(self.database_name, self.table_name)}(id, embedding, content, meta)"
 
         try:
-            self.cursor.executemany(sql_insert, db_documents, returning=True)
+            return self.cursor.execute(sql_load_data, infile_stream=from_haystack_to_tsv_documents(documents))
         except s2.IntegrityError as ie:
             self.connection.rollback()
             raise DuplicateDocumentError from ie
@@ -262,15 +280,6 @@ VALUES (?, ?, ?, ?)
                 "You can find the SQL query and the parameters in the debug logs."
             )
             raise DocumentStoreError(error_msg) from e
-
-        written_docs = 0
-        while True:
-            if self.cursor.fetchone():
-                written_docs += 1
-            if not self.cursor.nextset():
-                break
-
-        return written_docs
 
     def delete_documents(self, document_ids: List[str]) -> None:
         """
