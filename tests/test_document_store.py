@@ -34,3 +34,15 @@ class TestDocumentStore(DocumentStoreBaseTests):
 
         with pytest.raises(DuplicateDocumentError):
             document_store.write_documents(docs, DuplicatePolicy.FAIL)
+
+    def test_filter(self, document_store: SingleStoreDocumentStore):
+        docs = [
+            Document(id="1", content="11", embedding=[1.2, 1.4], meta={"a": 1, "b": {"c": "d"}}),
+            Document(id="2", content="22", embedding=[1.2, 1.4], meta={"a": 2, "b": {"c": "d"}}),
+            Document(id="3", content="33", embedding=[1.2, 1.4], meta={"a": 3, "b": {"c": "d"}}),
+            Document(id="4", content="44", embedding=[1.2, 1.4], meta={"a": 4, "b": {"c": "d"}}),
+        ]
+        assert document_store.write_documents(docs) == 4
+
+        old_docs = document_store.filter_documents({"field": "meta.a", "operator": "<", "value": 3})
+        assert len(old_docs) == 2

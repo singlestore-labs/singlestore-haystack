@@ -11,6 +11,7 @@ from haystack.document_stores.errors import DuplicateDocumentError, MissingDocum
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils.auth import Secret, deserialize_secrets_inplace
 from singlestoredb.connection import Cursor, Connection
+from singlestoredb.utils.results import Result
 
 from haystack_integrations.document_stores.singlestore_haystack.filter import \
     _convert_filters_to_where_clause_and_params
@@ -66,6 +67,13 @@ def from_haystack_to_tsv_documents(documents: List[Document]):
         meta = escape_tsv_json(document.meta)
         embedding = escape_tsv_json(document.embedding)
         yield "\t".join([id, embedding, content, meta]) + "\n"
+
+
+def from_s2_to_haystack_documents(res: Result) -> List[Document]:
+    documents = []
+    for row in res:
+        documents.append(Document(id=row[0], embedding=row[1], content=row[2], meta=row[3]))
+    return documents
 
 
 class SingleStoreDocumentStore:
@@ -238,7 +246,7 @@ class SingleStoreDocumentStore:
         )
 
         records = cursor.fetchall()
-        docs = self._from_s2_to_haystack_documents(records)
+        docs = from_s2_to_haystack_documents(records)
         return docs
 
     def write_documents(self, documents: List[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int:
