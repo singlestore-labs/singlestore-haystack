@@ -29,5 +29,8 @@ class TestDocumentStore(DocumentStoreBaseTests):
     def test_write_documents(self, document_store: SingleStoreDocumentStore):
         docs = [Document(id="1", content="2", embedding=[1.2, 1.4], meta={"a": 1, "b": {"c": "d"}})]
         assert document_store.write_documents(docs) == 1
+        document_store.delete_documents(["1"])
+        assert document_store.write_documents(docs) == 1
+
         with pytest.raises(DuplicateDocumentError):
             document_store.write_documents(docs, DuplicatePolicy.FAIL)

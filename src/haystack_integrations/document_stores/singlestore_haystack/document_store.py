@@ -20,6 +20,10 @@ logger = logging.getLogger(__name__)
 VALID_VECTOR_SIMILARITY_FUNCTIONS = ["dot_product", "euclidean_distance"]
 
 
+def escape_string_literal(s: str):
+    return "'" + s.replace("'", "''") + "'"
+
+
 def escape_identifier(identifier: str):
     return "`" + identifier.replace("`", "``") + "`"
 
@@ -284,13 +288,16 @@ class SingleStoreDocumentStore:
     def delete_documents(self, document_ids: List[str]) -> None:
         """
         Deletes all documents with a matching document_ids from the document store.
-        Fails with `MissingDocumentError` if no document with this id is present in the store.
 
         :param object_ids: the object_ids to delete
         """
-        for doc_id in document_ids:  # FIXME
-            msg = f"ID '{doc_id}' not found, cannot delete it."
-            raise MissingDocumentError(msg)
+        if not document_ids:
+            return
+
+        document_ids_str = ", ".join(escape_string_literal(document_id) for document_id in document_ids)
+        delete_sql = f"DELETE FROM {escape_table(self.database_name, self.table_name)} WHERE id IN ({document_ids_str})"
+
+        self._execute_sql(delete_sql, error_msg="Could not delete documents from SingleStoreDocumentStore")
 
     def to_dict(self) -> Dict[str, Any]:
         """
