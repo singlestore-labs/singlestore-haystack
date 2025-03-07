@@ -51,7 +51,7 @@ class SingleStoreEmbeddingRetriever:
                 self,
                 filters=self.filters,
                 top_k=self.top_k,
-                vector_function=self.vector_function,
+                vector_similarity_function=self.vector_similarity_function,
                 filter_policy=self.filter_policy.value,
                 document_store=self.document_store.to_dict(),
             )
@@ -95,19 +95,19 @@ class SingleStoreEmbeddingRetriever:
                             the `filter_policy` chosen at retriever initialization. See init method docstring for more
                             details.
             :param top_k: Maximum number of Documents to return.
-            :param vector_function: The similarity function to use when searching for similar embeddings.
+            :param vector_similarity_function: The similarity function to use when searching for similar embeddings.
     
             :returns: List of Documents similar to `query_embedding`.
             """
             filters = apply_filter_policy(self.filter_policy, self.filters,
                                           filters)
             top_k = top_k or self.top_k
-            vector_function = vector_similarity_function or self.vector_function
+            vector_similarity_function = vector_similarity_function or self.vector_similarity_function
 
             docs = self.document_store._embedding_retrieval(
                 query_embedding=query_embedding,
                 filters=filters,
                 top_k=top_k,
-                vector_function=vector_function,
+                vector_similarity_function=vector_similarity_function,
             )
             return {"documents": docs}

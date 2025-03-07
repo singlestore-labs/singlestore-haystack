@@ -173,7 +173,10 @@ class SingleStoreDocumentStore:
         id VARCHAR(128) PRIMARY KEY,
         embedding VECTOR({self.embedding_dimension}, F32),
         content TEXT,
-        meta JSON)"""  # TODO: add other data
+        meta JSON,
+        FULLTEXT USING VERSION 2 fi (content)
+        )"""  # TODO: add other data
+        # TODO: configure index creation
 
         self._execute_sql(create_sql,
                           error_msg="Could not create table in SingleStoreDocumentStore")
@@ -400,6 +403,54 @@ class SingleStoreDocumentStore:
         sort_order = "ASC" if vector_similarity_function == "euclidean_distance" else "DESC"
 
         sql_sort = f" ORDER BY score {sort_order} LIMIT {top_k}"
+
+        sql_query = sql_select + sql_where_clause + sql_sort
+
+        result = self._execute_sql(
+            sql_query,
+            params,
+            error_msg="Could not retrieve documents from SingleStoreDocumentStore."
+        )
+
+        records = result.fetchall()
+        docs = from_s2_to_haystack_documents(records)
+        return docs
+
+    def _bm25_retrieval(self,
+        query: str,
+        filters: Optional[Dict[str, Any]] = None,
+        top_k: Optional[int] = None):
+        """
+        Retrieves documents that are most similar to `query`, using the BM25 algorithm.
+
+        This method is not meant to be part of the public interface of
+        `SingleStoreDocumentStore` nor called directly.
+        `SingleStoreBM25Retriever` uses this method directly and is the public interface for it.
+
+        :param query: Text of the query.
+        :param filters: Filters applied to the retrieved Documents.
+        :param top_k: Maximum number of Documents to return.
+
+
+        :raises ValueError: If `query` is an empty string.
+        :returns: List of Document that are most similar to `query`.
+        """
+
+        if query is None:
+            msg = "query must not be None"
+            raise ValueError(msg)
+
+        # TODO: add several versions
+        score_definition = f" BM25({escape_table(self.database_name, self.table_name)}, 'content:{query}')"
+        sql_select = f"SELECT *, {score_definition} AS score FROM {escape_table(self.database_name, self.table_name)}"
+
+        sql_where_clause = ""
+        params = ()
+        if filters:
+            sql_where_clause, params = _convert_filters_to_where_clause_and_params(
+                filters)
+
+        sql_sort = f" ORDER BY score DESC LIMIT {top_k}"
 
         sql_query = sql_select + sql_where_clause + sql_sort
 
