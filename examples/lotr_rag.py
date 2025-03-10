@@ -1,3 +1,5 @@
+import os
+
 from haystack import Pipeline
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators import OpenAIGenerator
@@ -29,7 +31,7 @@ pipeline.add_component("retriever", SingleStoreBM25Retriever(document_store=docu
 pipeline.add_component("prompt_builder", PromptBuilder(template=prompt_template))
 pipeline.add_component("llm", OpenAIGenerator(model="deepseek-ai/deepseek-llm-7b-chat",
                                               api_key=Secret.from_env_var("AUTH_TOKEN"),
-                                              api_base_url="https://apps.aws-london-novaprd1.svc.singlestore.com:8000/modelasaservice/4630027d-c335-4198-9610-6735a5cd1686/v1"))
+                                              api_base_url=os.getenv("API_URL")))
 
 pipeline.connect("retriever", "prompt_builder.documents")
 pipeline.connect("prompt_builder", "llm")
