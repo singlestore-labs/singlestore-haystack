@@ -13,14 +13,14 @@ VALID_VECTOR_SIMILARITY_FUNCTIONS = ["dot_product", "euclidean_distance"]
 class SingleStoreEmbeddingRetriever:
 
     def __init__(
-        self,
-        *,
-        document_store: SingleStoreDocumentStore,
-        filters: Optional[Dict[str, Any]] = None,
-        top_k: int = 10,
-        vector_similarity_function: Optional[
-            Literal["dot_product", "euclidean_distance"]] = "dot_product",
-        filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
+            self,
+            *,
+            document_store: SingleStoreDocumentStore,
+            filters: Optional[Dict[str, Any]] = None,
+            top_k: int = 10,
+            vector_similarity_function: Optional[
+                Literal["dot_product", "euclidean_distance"]] = "dot_product",
+            filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
     ):
         if not isinstance(document_store, SingleStoreDocumentStore):
             msg = "document_store must be an instance of SingleStoreDocumentStore"
@@ -40,74 +40,74 @@ class SingleStoreEmbeddingRetriever:
                 filter_policy)
         )
 
-        def to_dict(self) -> Dict[str, Any]:
-            """
-            Serializes the component to a dictionary.
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
     
-            :returns:
-                Dictionary with serialized data.
-            """
-            return default_to_dict(
-                self,
-                filters=self.filters,
-                top_k=self.top_k,
-                vector_similarity_function=self.vector_similarity_function,
-                filter_policy=self.filter_policy.value,
-                document_store=self.document_store.to_dict(),
-            )
+        :returns:
+            Dictionary with serialized data.
+        """
+        return default_to_dict(
+            self,
+            filters=self.filters,
+            top_k=self.top_k,
+            vector_similarity_function=self.vector_similarity_function,
+            filter_policy=self.filter_policy.value,
+            document_store=self.document_store.to_dict(),
+        )
 
-        @classmethod
-        def from_dict(cls,
-            data: Dict[str, Any]) -> "SingleStoreEmbeddingRetriever":
-            """
-            Deserializes the component from a dictionary.
+    @classmethod
+    def from_dict(cls,
+                  data: Dict[str, Any]) -> "SingleStoreEmbeddingRetriever":
+        """
+        Deserializes the component from a dictionary.
     
-            :param data:
-                Dictionary to deserialize from.
-            :returns:
-                Deserialized component.
-            """
-            doc_store_params = data["init_parameters"]["document_store"]
+        :param data:
+            Dictionary to deserialize from.
+        :returns:
+            Deserialized component.
+        """
+        doc_store_params = data["init_parameters"]["document_store"]
+        data["init_parameters"][
+            "document_store"] = SingleStoreDocumentStore.from_dict(
+            doc_store_params)
+        # Pipelines serialized with old versions of the component might not
+        # have the filter_policy field.
+        if filter_policy := data["init_parameters"].get("filter_policy"):
             data["init_parameters"][
-                "document_store"] = SingleStoreDocumentStore.from_dict(
-                doc_store_params)
-            # Pipelines serialized with old versions of the component might not
-            # have the filter_policy field.
-            if filter_policy := data["init_parameters"].get("filter_policy"):
-                data["init_parameters"][
-                    "filter_policy"] = FilterPolicy.from_str(filter_policy)
-            return default_from_dict(cls, data)
+                "filter_policy"] = FilterPolicy.from_str(filter_policy)
+        return default_from_dict(cls, data)
 
-        @component.output_types(documents=List[Document])
-        def run(
+    @component.output_types(documents=List[Document])
+    def run(
             self,
             query_embedding: List[float],
             filters: Optional[Dict[str, Any]] = None,
             top_k: Optional[int] = None,
             vector_similarity_function: Optional[
                 Literal["dot_product", "euclidean_distance"]] = "dot_product",
-        ):
-            """
-            Retrieve documents from the `SingleStoreDocumentStore`, based on their embeddings.
+    ):
+        """
+        Retrieve documents from the `SingleStoreDocumentStore`, based on their embeddings.
     
-            :param query_embedding: Embedding of the query.
-            :param filters: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-                            the `filter_policy` chosen at retriever initialization. See init method docstring for more
-                            details.
-            :param top_k: Maximum number of Documents to return.
-            :param vector_similarity_function: The similarity function to use when searching for similar embeddings.
+        :param query_embedding: Embedding of the query.
+        :param filters: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
+                        the `filter_policy` chosen at retriever initialization. See init method docstring for more
+                        details.
+        :param top_k: Maximum number of Documents to return.
+        :param vector_similarity_function: The similarity function to use when searching for similar embeddings.
     
-            :returns: List of Documents similar to `query_embedding`.
-            """
-            filters = apply_filter_policy(self.filter_policy, self.filters,
-                                          filters)
-            top_k = top_k or self.top_k
-            vector_similarity_function = vector_similarity_function or self.vector_similarity_function
+        :returns: List of Documents similar to `query_embedding`.
+        """
+        filters = apply_filter_policy(self.filter_policy, self.filters,
+                                      filters)
+        top_k = top_k or self.top_k
+        vector_similarity_function = vector_similarity_function or self.vector_similarity_function
 
-            docs = self.document_store._embedding_retrieval(
-                query_embedding=query_embedding,
-                filters=filters,
-                top_k=top_k,
-                vector_similarity_function=vector_similarity_function,
-            )
-            return {"documents": docs}
+        docs = self.document_store._embedding_retrieval(
+            query_embedding=query_embedding,
+            filters=filters,
+            top_k=top_k,
+            vector_similarity_function=vector_similarity_function,
+        )
+        return {"documents": docs}
