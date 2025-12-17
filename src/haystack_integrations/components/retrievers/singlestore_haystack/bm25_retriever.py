@@ -49,7 +49,7 @@ class SingleStoreBM25Retriever:
 
     @classmethod
     def from_dict(cls,
-                  data: Dict[str, Any]) -> "SingleStoreEmbeddingRetriever":
+                  data: Dict[str, Any]) -> "SingleStoreBM25Retriever":
         """
         Deserializes the component from a dictionary.
 
@@ -79,9 +79,9 @@ class SingleStoreBM25Retriever:
         """
         Retrieve documents from the `SingleStoreDocumentStore`, based on their embeddings.
 
-        :param query: Text of the query.
+        :param query: Text of the query. # TODO: explain what query means here
         :param filters: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
-                        the `filter_policy` chosen at retriever initialization. See init method docstring for more
+                        the `filter_policy` chosen at retriever initialization. See the init method docstring for more
                         details.
         :param top_k: Maximum number of Documents to return.
 

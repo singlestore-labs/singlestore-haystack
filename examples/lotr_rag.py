@@ -8,6 +8,7 @@ from haystack.utils import Secret
 from haystack_integrations.components.retrievers.singlestore_haystack import SingleStoreBM25Retriever
 from haystack_integrations.document_stores.singlestore_haystack import SingleStoreDocumentStore
 
+# TODO: rewrite examples
 document_store = SingleStoreDocumentStore(
     connection_string=Secret.from_env_var("SINGLESTORE_URL"),
     database_name="the_one_db",

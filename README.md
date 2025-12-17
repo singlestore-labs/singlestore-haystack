@@ -1,4 +1,5 @@
 [![test](https://github.com/deepset-ai/document-store/actions/workflows/test.yml/badge.svg)](https://github.com/deepset-ai/document-store/actions/workflows/test.yml)
+<!---TODO: rewrite README-->
 
 # Example Store
 
@@ -8,6 +9,7 @@ the new [Haystack](https://github.com/deepset-ai/haystack/) API available from v
 ## Template features
 
 By creating a new repo using this template, you'll get the following advantages:
+
 - Ready-made code layout and scaffold to build a custom document store.
 - Support for packaging and distributing the code through Python wheels using Hatch.
 - Github workflow to build and upload a package when tagging the repo.
@@ -16,7 +18,8 @@ By creating a new repo using this template, you'll get the following advantages:
 ## How to use this repo
 
 1. Create a new repository starting from this template. If you never used this feature before, you
-   can find more details in [Github docs](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+   can find more details
+   in [Github docs](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
 2. If possible, follow the convention `technology-haystack` for the name of the new repository,
    where `technology` can be for example the name of a vector database you're integrating.
 3. Rename the package `src/example_store` to something more meaningful and adjust the Python
@@ -30,7 +33,6 @@ By creating a new repo using this template, you'll get the following advantages:
 When your custom document store is ready and working, feel free to add it to the list of available
 [Haystack Integrations](https://haystack.deepset.ai/integrations) by opening a Pull Request in
 [this repo](https://github.com/deepset-ai/haystack-integrations).
-
 
 ## Test
 

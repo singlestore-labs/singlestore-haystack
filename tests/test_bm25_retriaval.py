@@ -9,6 +9,7 @@ from haystack_integrations.document_stores.singlestore_haystack import \
     SingleStoreDocumentStore
 
 
+# TODO: improve tests
 @pytest.mark.integration
 class TestBM25Retrieval:
     def test_embedding_retrieval_dot_product(self):
@@ -49,8 +50,6 @@ class TestBM25Retrieval:
         ]
 
         document_store.write_documents(docs)
-        document_store._execute_sql(
-            "OPTIMIZE TABLE db.haystack_documents FLUSH")
         results = document_store._bm25_retrieval(
             query="database", top_k=2,
         )

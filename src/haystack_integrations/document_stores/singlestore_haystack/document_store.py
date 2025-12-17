@@ -7,8 +7,7 @@ import singlestoredb as s2
 from typing import Any, Dict, List, Optional, Literal
 
 from haystack import Document, default_from_dict, default_to_dict
-from haystack.document_stores.errors import DuplicateDocumentError, \
-    MissingDocumentError, DocumentStoreError
+from haystack.document_stores.errors import DuplicateDocumentError, DocumentStoreError
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils.auth import Secret, deserialize_secrets_inplace
 from singlestoredb.connection import Cursor, Connection
@@ -84,6 +83,7 @@ def from_s2_to_haystack_documents(res: Result) -> List[Document]:
 
 
 class SingleStoreDocumentStore:
+    # TODO: write comment
 
     def __init__(self,
                  connection_string: Secret = Secret.from_env_var("S2_CONN_STR"),
@@ -130,7 +130,6 @@ class SingleStoreDocumentStore:
 
         conn_str = self.connection_string.resolve_value() or ""
         connection = s2.connect(conn_str)
-        connection.autocommit = True
 
         self._connection = connection
         self._cursor = self._connection.cursor()
@@ -145,13 +144,13 @@ class SingleStoreDocumentStore:
         Internal method to initialize the table.
         """
         if self.recreate_table:
-            self.delete_table()
+            self._delete_table()
 
         self._create_table_if_not_exists()
 
         self._table_initialized = True
 
-    def delete_table(self):
+    def _delete_table(self):
         """
         Deletes the table used to store Haystack documents.
         The name of the database (`database_name`) and the name of the table (`table_name`)
@@ -161,7 +160,7 @@ class SingleStoreDocumentStore:
 
         self._execute_sql(
             delete_sql,
-            error_msg=f"Could not delete table {self.database_name}.{self.table_name} in SingleStoreDocumentStore",
+            error_msg=f"Could not delete table {self.database_name}.{self.table_name} in SingleStoreDocumentStore.",
         )
 
     def _create_table_if_not_exists(self):
@@ -169,17 +168,19 @@ class SingleStoreDocumentStore:
         Creates the table to store Haystack documents if it doesn't exist yet.
         """
 
+        # TODO: check schema
         create_sql = f"""CREATE TABLE IF NOT EXISTS {escape_table(self.database_name, self.table_name)} (
         id VARCHAR(128) PRIMARY KEY,
         embedding VECTOR({self.embedding_dimension}, F32),
         content LONGTEXT,
         meta JSON,
         FULLTEXT USING VERSION 2 fi (content)
-        )"""  # TODO: add other data
+        )"""
+        # TODO: add other data
         # TODO: configure index creation
 
         self._execute_sql(create_sql,
-                          error_msg="Could not create table in SingleStoreDocumentStore")
+                          error_msg="Could not create table in SingleStoreDocumentStore.")
 
     def _execute_sql(
             self, sql_query: str, params: Optional[tuple] = None,
@@ -202,7 +203,6 @@ class SingleStoreDocumentStore:
         try:
             cursor.execute(sql_query, params)
         except s2.Error as e:
-            self.connection.rollback()
             detailed_error_msg = f"{error_msg}.\nYou can find the SQL query and the parameters in the debug logs."
             raise DocumentStoreError(detailed_error_msg) from e
 
@@ -216,7 +216,7 @@ class SingleStoreDocumentStore:
         sql_count = f"SELECT COUNT(*) FROM {escape_table(self.database_name, self.table_name)}"
 
         count = self._execute_sql(sql_count,
-                                  error_msg="Could not count documents in PgvectorDocumentStore").fetchone()[
+                                  error_msg="Could not count documents in SingleStoreDocumentStore.").fetchone()[
             0
         ]
         return count
@@ -252,13 +252,11 @@ class SingleStoreDocumentStore:
         cursor = self._execute_sql(
             sql_filter,
             params,
-            error_msg="Could not filter documents from PgvectorDocumentStore.",
+            error_msg="Could not filter documents from SingleStoreDocumentStore.",
             cursor=self.cursor,
         )
 
-        records = cursor.fetchall()
-        docs = from_s2_to_haystack_documents(records)
-        return docs
+        return from_s2_to_haystack_documents(cursor.fetchall())
 
     def write_documents(self, documents: List[Document],
                         policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int:
@@ -271,7 +269,7 @@ class SingleStoreDocumentStore:
              - skip: keep the existing document and ignore the new one.
              - overwrite: remove the old document and write the new one.
              - fail: an error is raised
-        :raises DuplicateDocumentError: Exception trigger on duplicate document if `policy=DuplicatePolicy.FAIL`
+        :raises DuplicateDocumentError: Exception trigger on a duplicate document if `policy=DuplicatePolicy.FAIL`
         :return: None
         """
 
@@ -296,16 +294,15 @@ class SingleStoreDocumentStore:
             res = self.cursor.execute(sql_load_data,
                                       infile_stream=from_haystack_to_tsv_documents(
                                           documents))
+            # TODO: check when this is needed
             self.cursor.execute(f"OPTIMIZE TABLE {escape_table(self.database_name, self.table_name)} FLUSH")
             return res
         except s2.IntegrityError as ie:
-            self.connection.rollback()
             raise DuplicateDocumentError from ie
         except s2.Error as e:
-            self.connection.rollback()
             error_msg = (
                 "Could not write documents to SingleStoreDocumentStore. \n"
-                "You can find the SQL query and the parameters in the debug logs."
+                "You can find the SQL query in the debug logs."
             )
             raise DocumentStoreError(error_msg) from e
 
@@ -323,7 +320,7 @@ class SingleStoreDocumentStore:
         delete_sql = f"DELETE FROM {escape_table(self.database_name, self.table_name)} WHERE id IN ({document_ids_str})"
 
         self._execute_sql(delete_sql,
-                          error_msg="Could not delete documents from SingleStoreDocumentStore")
+                          error_msg="Could not delete documents from SingleStoreDocumentStore.")
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -414,9 +411,7 @@ class SingleStoreDocumentStore:
             error_msg="Could not retrieve documents from SingleStoreDocumentStore."
         )
 
-        records = result.fetchall()
-        docs = from_s2_to_haystack_documents(records)
-        return docs
+        return from_s2_to_haystack_documents(result.fetchall())
 
     def _bm25_retrieval(self,
                         query: str,
@@ -435,7 +430,7 @@ class SingleStoreDocumentStore:
 
 
         :raises ValueError: If `query` is an empty string.
-        :returns: List of Document that are most similar to `query`.
+        :returns: List of Documents that are most similar to `query`.
         """
 
         if query is None:
@@ -443,6 +438,7 @@ class SingleStoreDocumentStore:
             raise ValueError(msg)
 
         # TODO: add several versions
+        # TODO: check and understand how this BM25 works
         score_definition = f" BM25({escape_table(self.database_name, self.table_name)}, 'content:{query}')"
         sql_select = f"SELECT *, {score_definition} AS score FROM {escape_table(self.database_name, self.table_name)}"
 
@@ -462,6 +458,4 @@ class SingleStoreDocumentStore:
             error_msg="Could not retrieve documents from SingleStoreDocumentStore."
         )
 
-        records = result.fetchall()
-        docs = from_s2_to_haystack_documents(records)
-        return docs
+        return from_s2_to_haystack_documents(result.fetchall())
