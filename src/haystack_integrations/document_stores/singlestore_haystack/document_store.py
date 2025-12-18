@@ -6,8 +6,10 @@ import logging
 import singlestoredb as s2
 from typing import Any, Dict, List, Optional, Literal
 
-from haystack import Document, default_from_dict, default_to_dict
-from haystack.document_stores.errors import DuplicateDocumentError, DocumentStoreError
+from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.dataclasses import Document
+from haystack.document_stores.errors import DuplicateDocumentError, \
+    DocumentStoreError
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils.auth import Secret, deserialize_secrets_inplace
 from singlestoredb.connection import Cursor, Connection
@@ -86,12 +88,12 @@ class SingleStoreDocumentStore:
     # TODO: write comment
 
     def __init__(self,
-                 connection_string: Secret = Secret.from_env_var("S2_CONN_STR"),
-                 database_name: str = "db",
-                 table_name: str = "haystack_documents",
-                 embedding_dimension: int = 768,
-                 recreate_table: bool = False,
-                 ):
+        connection_string: Secret = Secret.from_env_var("S2_CONN_STR"),
+        database_name: str = "db",
+        table_name: str = "haystack_documents",
+        embedding_dimension: int = 768,
+        recreate_table: bool = False,
+    ):
         self.connection_string = connection_string
         self.table_name = table_name
         self.database_name = database_name
@@ -111,7 +113,7 @@ class SingleStoreDocumentStore:
     @property
     def connection(self):
         if self._connection is None or not connection_is_valid(
-                self._connection):
+            self._connection):
             self._create_connection()
 
         return self._connection
@@ -183,8 +185,8 @@ class SingleStoreDocumentStore:
                           error_msg="Could not create table in SingleStoreDocumentStore.")
 
     def _execute_sql(
-            self, sql_query: str, params: Optional[tuple] = None,
-            error_msg: str = "", cursor: Optional[Cursor] = None
+        self, sql_query: str, params: Optional[tuple] = None,
+        error_msg: str = "", cursor: Optional[Cursor] = None
     ):
         """
         Internal method to execute SQL statements and handle exceptions.
@@ -222,7 +224,7 @@ class SingleStoreDocumentStore:
         return count
 
     def filter_documents(self, filters: Optional[Dict[str, Any]] = None) -> \
-            List[Document]:
+        List[Document]:
         """
         Returns the documents that match the filters provided.
 
@@ -259,7 +261,7 @@ class SingleStoreDocumentStore:
         return from_s2_to_haystack_documents(cursor.fetchall())
 
     def write_documents(self, documents: List[Document],
-                        policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int:
+        policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int:
         """
         Writes (or overwrites) documents into the store.
 
@@ -295,7 +297,8 @@ class SingleStoreDocumentStore:
                                       infile_stream=from_haystack_to_tsv_documents(
                                           documents))
             # TODO: check when this is needed
-            self.cursor.execute(f"OPTIMIZE TABLE {escape_table(self.database_name, self.table_name)} FLUSH")
+            self.cursor.execute(
+                f"OPTIMIZE TABLE {escape_table(self.database_name, self.table_name)} FLUSH")
             return res
         except s2.IntegrityError as ie:
             raise DuplicateDocumentError from ie
@@ -353,13 +356,13 @@ class SingleStoreDocumentStore:
         return default_from_dict(cls, data)
 
     def _embedding_retrieval(
-            self,
-            query_embedding: List[float],
-            *,
-            filters: Optional[Dict[str, Any]] = None,
-            top_k: int = 10,
-            vector_similarity_function: Optional[
-                Literal["dot_product", "euclidean_distance"]] = None,
+        self,
+        query_embedding: List[float],
+        *,
+        filters: Optional[Dict[str, Any]] = None,
+        top_k: int = 10,
+        vector_similarity_function: Optional[
+            Literal["dot_product", "euclidean_distance"]] = None,
     ) -> List[Document]:
         """
         Retrieves documents that are most similar to the query embedding using a vector similarity metric.
@@ -414,9 +417,9 @@ class SingleStoreDocumentStore:
         return from_s2_to_haystack_documents(result.fetchall())
 
     def _bm25_retrieval(self,
-                        query: str,
-                        filters: Optional[Dict[str, Any]] = None,
-                        top_k: Optional[int] = None):
+        query: str,
+        filters: Optional[Dict[str, Any]] = None,
+        top_k: Optional[int] = None):
         """
         Retrieves documents that are most similar to `query`, using the BM25 algorithm.
 

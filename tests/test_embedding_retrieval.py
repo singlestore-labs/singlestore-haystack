@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import pytest
-from haystack import Document
+from haystack.dataclasses import Document
 from haystack.utils import Secret
 
 from haystack_integrations.document_stores.singlestore_haystack import \
