@@ -100,7 +100,6 @@ def _treat_meta_field(field: str, value: Any) -> str:
 def _equal(field: str, value: Any) -> Tuple[str, List[Any]]:
     if value is None:
         return f"{field} IS NULL", []
-    # TODO: check why %s is used instead of ?
     return f"{field} = %s", [value]
 
 
