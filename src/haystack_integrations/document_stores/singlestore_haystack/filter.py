@@ -1,9 +1,11 @@
-from tarfile import FilterError
+from datetime import datetime
 from typing import Tuple, Dict, Any, Literal, List
+
+from haystack.errors import FilterError
 
 
 def _convert_filters_to_where_clause_and_params(
-        filters: Dict[str, Any], operator: Literal["WHERE", "AND"] = "WHERE"
+    filters: Dict[str, Any], operator: Literal["WHERE", "AND"] = "WHERE"
 ) -> Tuple[str, Tuple]:
     """
     Convert Haystack filters to a WHERE clause and a tuple of params to query SingleStore.
@@ -18,7 +20,8 @@ def _convert_filters_to_where_clause_and_params(
     return where_clause, tuple(params)
 
 
-def _parse_logical_condition(condition: Dict[str, Any]) -> Tuple[str, List[Any]]:
+def _parse_logical_condition(condition: Dict[str, Any]) -> Tuple[
+    str, List[Any]]:
     if "operator" not in condition:
         msg = f"'operator' key missing in {condition}"
         raise FilterError(msg)
@@ -27,7 +30,7 @@ def _parse_logical_condition(condition: Dict[str, Any]) -> Tuple[str, List[Any]]
         raise FilterError(msg)
 
     operator = condition["operator"]
-    if operator not in ["AND", "OR"]:
+    if operator not in ["AND", "OR", "NOT"]:
         msg = f"Unknown logical operator '{operator}'. Valid operators are: 'AND', 'OR'"
         raise FilterError(msg)
 
@@ -45,6 +48,9 @@ def _parse_logical_condition(condition: Dict[str, Any]) -> Tuple[str, List[Any]]
         sql_query = f"({' AND '.join(query_parts)})"
     elif operator == "OR":
         sql_query = f"({' OR '.join(query_parts)})"
+    elif operator == "NOT":
+        sql_query = f"(NOT ({' AND '.join(query_parts)})) OR ({' AND '.join(query_parts)}) IS NULL"
+        values.extend(values)
     else:
         msg = f"Unknown logical operator '{operator}'"
         raise FilterError(msg)
@@ -52,7 +58,8 @@ def _parse_logical_condition(condition: Dict[str, Any]) -> Tuple[str, List[Any]]
     return sql_query, values
 
 
-def _parse_comparison_condition(condition: Dict[str, Any]) -> Tuple[str, List[Any]]:
+def _parse_comparison_condition(condition: Dict[str, Any]) -> Tuple[
+    str, List[Any]]:
     field: str = condition["field"]
     if "operator" not in condition:
         msg = f"'operator' key missing in {condition}"
@@ -91,28 +98,51 @@ def _treat_meta_field(field: str, value: Any) -> str:
 
 
 def _equal(field: str, value: Any) -> Tuple[str, List[Any]]:
+    if value is None:
+        return f"{field} IS NULL", []
     # TODO: check why %s is used instead of ?
     return f"{field} = %s", [value]
 
 
 def _not_equal(field: str, value: Any) -> Tuple[str, List[Any]]:
-    return f"{field} != %s", [value]
+    if value is None:
+        return f"{field} IS NOT NULL", []
+    return f"{field} IS NULL OR {field} != %s", [value]
 
 
 def _greater_than(field: str, value: Any) -> Tuple[str, List[Any]]:
+    _comparable_value_check(value)
     return f"{field} > %s", [value]
 
 
 def _greater_than_equal(field: str, value: Any) -> Tuple[str, List[Any]]:
+    _comparable_value_check(value)
     return f"{field} >= %s", [value]
 
 
 def _less_than(field: str, value: Any) -> Tuple[str, List[Any]]:
+    _comparable_value_check(value)
     return f"{field} < %s", [value]
 
 
 def _less_than_equal(field: str, value: Any) -> Tuple[str, List[Any]]:
+    _comparable_value_check(value)
     return f"{field} <= %s", [value]
+
+
+def _comparable_value_check(value: Any):
+    if isinstance(value, str):
+        try:
+            datetime.fromisoformat(value)
+        except (ValueError, TypeError) as exc:
+            msg = (
+                "Can't compare strings using operators '>', '>=', '<', '<='. "
+                "Strings are only comparable if they are ISO formatted dates."
+            )
+            raise FilterError(msg) from exc
+    if isinstance(value, list):
+        msg = f"Filter value can't be of type {type(value)} using operators '>', '>=', '<', '<='"
+        raise FilterError(msg)
 
 
 def _not_in(field: str, value: Any) -> Tuple[str, List[Any]]:
@@ -120,7 +150,7 @@ def _not_in(field: str, value: Any) -> Tuple[str, List[Any]]:
         msg = f"{field}'s value must be a list when using 'not in' comparator"
         raise FilterError(msg)
 
-    return f"{field} NOT IN({','.join(['%s'] * len(value))})", value
+    return f"{field} IS NULL OR {field} NOT IN({','.join(['%s'] * len(value))})", value
 
 
 def _in(field: str, value: Any) -> Tuple[str, List[Any]]:

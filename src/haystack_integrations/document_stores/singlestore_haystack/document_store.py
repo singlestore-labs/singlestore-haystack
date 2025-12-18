@@ -70,15 +70,17 @@ def from_haystack_to_tsv_documents(documents: List[Document]):
         yield "\t".join([id, embedding, content, meta]) + "\n"
 
 
-def from_s2_to_haystack_documents(res: Result) -> List[Document]:
+def from_s2_to_haystack_documents(res: Result, with_score: bool = False) -> \
+    List[
+        Document]:
     documents = []
     for row in res:
-        if len(row) > 4:
-            document = Document(id=row[0], embedding=row[1], content=row[2],
-                                meta=row[3])
-        else:
+        if with_score:
             document = Document(id=row[0], embedding=row[1], content=row[2],
                                 meta=row[3], score=row[4])
+        else:
+            document = Document(id=row[0], embedding=row[1], content=row[2],
+                                meta=row[3])
         documents.append(document)
 
     return documents
@@ -272,7 +274,7 @@ class SingleStoreDocumentStore:
              - overwrite: remove the old document and write the new one.
              - fail: an error is raised
         :raises DuplicateDocumentError: Exception trigger on a duplicate document if `policy=DuplicatePolicy.FAIL`
-        :return: None
+        :return: The number of documents written to the document store.
         """
 
         if len(documents) > 0:
@@ -286,16 +288,17 @@ class SingleStoreDocumentStore:
         policy_map = {
             DuplicatePolicy.NONE: "",
             DuplicatePolicy.FAIL: "",
-            DuplicatePolicy.SKIP: "IGNORE DUPLICATE KEY ERRORS",
+            DuplicatePolicy.SKIP: "SKIP DUPLICATE KEY ERRORS",
             DuplicatePolicy.OVERWRITE: "REPLACE"
         }
 
         sql_load_data = f"LOAD DATA LOCAL INFILE ':stream:' {policy_map.get(policy)} INTO TABLE {escape_table(self.database_name, self.table_name)}(id, embedding, content, meta)"
 
         try:
-            res = self.cursor.execute(sql_load_data,
-                                      infile_stream=from_haystack_to_tsv_documents(
-                                          documents))
+            self.cursor.execute(sql_load_data,
+                                infile_stream=from_haystack_to_tsv_documents(
+                                    documents))
+            res = self.cursor.rowcount
             # TODO: check when this is needed
             self.cursor.execute(
                 f"OPTIMIZE TABLE {escape_table(self.database_name, self.table_name)} FLUSH")
@@ -414,7 +417,7 @@ class SingleStoreDocumentStore:
             error_msg="Could not retrieve documents from SingleStoreDocumentStore."
         )
 
-        return from_s2_to_haystack_documents(result.fetchall())
+        return from_s2_to_haystack_documents(result.fetchall(), with_score=True)
 
     def _bm25_retrieval(self,
         query: str,
@@ -461,4 +464,4 @@ class SingleStoreDocumentStore:
             error_msg="Could not retrieve documents from SingleStoreDocumentStore."
         )
 
-        return from_s2_to_haystack_documents(result.fetchall())
+        return from_s2_to_haystack_documents(result.fetchall(), with_score=True)
