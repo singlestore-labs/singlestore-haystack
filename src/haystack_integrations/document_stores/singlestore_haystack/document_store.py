@@ -9,8 +9,7 @@ from typing import Any, Literal, Optional, Union
 import singlestoredb as s2
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import Document
-from haystack.document_stores.errors import DocumentStoreError, \
-    DuplicateDocumentError
+from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils.auth import Secret, deserialize_secrets_inplace
 from singlestoredb.connection import Connection, Cursor
@@ -56,8 +55,7 @@ def connection_is_valid(connection: Connection) -> bool:
 
 def escape_tsv(data: Union[str, None]) -> str:
     if data is not None:
-        return data.replace("\\", "\\\\").replace("\n", "\\n").replace("\t",
-                                                                       "\\t")
+        return data.replace("\\", "\\\\").replace("\n", "\\n").replace("\t", "\\t")
     else:
         return "\\N"
 
@@ -69,8 +67,7 @@ def escape_tsv_json(data: Any) -> str:
         return "\\N"
 
 
-def from_haystack_to_tsv_documents(documents: list[Document]) -> Generator[
-    str, None, None]:
+def from_haystack_to_tsv_documents(documents: list[Document]) -> Generator[str, None, None]:
     for document in documents:
         identifier = escape_tsv(document.id)
         content = escape_tsv(document.content)
@@ -79,8 +76,7 @@ def from_haystack_to_tsv_documents(documents: list[Document]) -> Generator[
         yield "\t".join([identifier, embedding, content, meta]) + "\n"
 
 
-def from_s2_to_haystack_documents(res: Result, *, with_score: bool = False) -> \
-list[Document]:
+def from_s2_to_haystack_documents(res: Result, *, with_score: bool = False) -> list[Document]:
     documents = []
 
     if not isinstance(res, list):
@@ -93,11 +89,9 @@ list[Document]:
             raise TypeError(msg)
 
         if with_score:
-            document = Document(id=row[0], embedding=row[1], content=row[2],
-                                meta=row[3], score=row[4])
+            document = Document(id=row[0], embedding=row[1], content=row[2], meta=row[3], score=row[4])
         else:
-            document = Document(id=row[0], embedding=row[1], content=row[2],
-                                meta=row[3])
+            document = Document(id=row[0], embedding=row[1], content=row[2], meta=row[3])
         documents.append(document)
 
     return documents
@@ -126,16 +120,14 @@ class SingleStoreDocumentStore:
 
     @property
     def cursor(self):
-        if self._cursor is None or self._connection is None or not connection_is_valid(
-            self._connection):
+        if self._cursor is None or self._connection is None or not connection_is_valid(self._connection):
             self._create_connection()
 
         return self._cursor
 
     @property
     def connection(self):
-        if self._connection is None or not connection_is_valid(
-            self._connection):
+        if self._connection is None or not connection_is_valid(self._connection):
             self._create_connection()
 
         return self._connection
@@ -170,6 +162,7 @@ class SingleStoreDocumentStore:
         if self.recreate_table:
             self._delete_table()
 
+        self._create_database_if_not_exists()
         self._create_table_if_not_exists()
 
         self._table_initialized = True
@@ -187,7 +180,32 @@ class SingleStoreDocumentStore:
             error_msg=f"Could not delete table {self.database_name}.{self.table_name} in SingleStoreDocumentStore.",
         )
 
-    def _create_table_if_not_exists(self):
+    def _create_database_if_not_exists(self) -> None:
+        """
+        Creates the database if it doesn't exist yet.
+        """
+
+        if self._database_exists():
+            return
+
+        create_sql = f"CREATE DATABASE {escape_identifier(self.database_name)}"
+
+        self._execute_sql(create_sql, error_msg="Could not create table in SingleStoreDocumentStore.")
+
+    def _database_exists(self) -> bool:
+        database_name_literal = escape_string_literal(self.database_name).replace("%", "\\%").replace("_", "\\_")
+        show_database = f"SHOW DATABASES LIKE {database_name_literal}"
+
+        res = self._execute_sql(
+            show_database, error_msg="Could not create table in SingleStoreDocumentStore."
+        ).fetchall()
+        if not isinstance(res, list):
+            msg = f"Unexpected result type for SHOW DATABASES: {type(res)}"
+            raise TypeError(msg)
+
+        return len(res) > 0
+
+    def _create_table_if_not_exists(self) -> None:
         """
         Creates the table to store Haystack documents if it doesn't exist yet.
         """
@@ -203,12 +221,10 @@ class SingleStoreDocumentStore:
         # TODO: add other data
         # TODO: configure index creation
 
-        self._execute_sql(create_sql,
-                          error_msg="Could not create table in SingleStoreDocumentStore.")
+        self._execute_sql(create_sql, error_msg="Could not create table in SingleStoreDocumentStore.")
 
     def _execute_sql(
-        self, sql_query: str, params: Optional[tuple] = None,
-        error_msg: str = "", cursor: Optional[Cursor] = None
+        self, sql_query: str, params: Optional[tuple] = None, error_msg: str = "", cursor: Optional[Cursor] = None
     ) -> Cursor:
         """
         Internal method to execute SQL statements and handle exceptions.
@@ -237,12 +253,10 @@ class SingleStoreDocumentStore:
         Returns how many documents are present in the document store.
         """
 
-        sql_count = COUNT_QUERY.format(
-            escape_table(self.database_name, self.table_name))
+        sql_count = COUNT_QUERY.format(escape_table(self.database_name, self.table_name))
 
         res = self._execute_sql(
-            sql_count,
-            error_msg="Could not count documents in SingleStoreDocumentStore."
+            sql_count, error_msg="Could not count documents in SingleStoreDocumentStore."
         ).fetchone()
         if not isinstance(res, tuple):
             msg = f"Unexpected result type: {type(res)}"
@@ -255,8 +269,7 @@ class SingleStoreDocumentStore:
 
         return count
 
-    def filter_documents(self, filters: Optional[dict[str, Any]] = None) -> \
-    list[Document]:
+    def filter_documents(self, filters: Optional[dict[str, Any]] = None) -> list[Document]:
         """
         Returns the documents that match the filters provided.
 
@@ -275,13 +288,11 @@ class SingleStoreDocumentStore:
                 msg = "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
                 raise ValueError(msg)
 
-        sql_filter = SELECT_QUERY.format(
-            escape_table(self.database_name, self.table_name))
+        sql_filter = SELECT_QUERY.format(escape_table(self.database_name, self.table_name))
 
         params = ()
         if filters:
-            sql_where_clause, params = _convert_filters_to_where_clause_and_params(
-                filters)
+            sql_where_clause, params = _convert_filters_to_where_clause_and_params(filters)
             sql_filter += sql_where_clause
 
         cursor = self._execute_sql(
@@ -293,8 +304,7 @@ class SingleStoreDocumentStore:
 
         return from_s2_to_haystack_documents(cursor.fetchall())
 
-    def write_documents(self, documents: list[Document],
-        policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int:
+    def write_documents(self, documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.NONE) -> int:
         """
         Writes (or overwrites) documents into the store.
 
@@ -324,18 +334,14 @@ class SingleStoreDocumentStore:
         }
 
         sql_load_data = LOAD_DATA_QUERY.format(
-            policy_map.get(policy),
-            escape_table(self.database_name, self.table_name)
+            policy_map.get(policy), escape_table(self.database_name, self.table_name)
         )
 
         try:
-            self.cursor.execute(sql_load_data,
-                                infile_stream=from_haystack_to_tsv_documents(
-                                    documents))
+            self.cursor.execute(sql_load_data, infile_stream=from_haystack_to_tsv_documents(documents))
             res = self.cursor.rowcount
             # TODO: check when this is needed
-            self.cursor.execute(
-                f"OPTIMIZE TABLE {escape_table(self.database_name, self.table_name)} FLUSH")
+            self.cursor.execute(f"OPTIMIZE TABLE {escape_table(self.database_name, self.table_name)} FLUSH")
             return res
         except s2.IntegrityError as ie:
             raise DuplicateDocumentError from ie
@@ -354,13 +360,10 @@ class SingleStoreDocumentStore:
         if not document_ids:
             return
 
-        document_ids_str = ", ".join(
-            escape_string_literal(document_id) for document_id in document_ids)
-        delete_sql = DELETE_QUERY.format(
-            escape_table(self.database_name, self.table_name), document_ids_str)
+        document_ids_str = ", ".join(escape_string_literal(document_id) for document_id in document_ids)
+        delete_sql = DELETE_QUERY.format(escape_table(self.database_name, self.table_name), document_ids_str)
 
-        self._execute_sql(delete_sql,
-                          error_msg="Could not delete documents from SingleStoreDocumentStore.")
+        self._execute_sql(delete_sql, error_msg="Could not delete documents from SingleStoreDocumentStore.")
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -388,8 +391,7 @@ class SingleStoreDocumentStore:
         :returns:
             Deserialized component.
         """
-        deserialize_secrets_inplace(data["init_parameters"],
-                                    ["connection_string"])
+        deserialize_secrets_inplace(data["init_parameters"], ["connection_string"])
         return default_from_dict(cls, data)
 
     def _embedding_retrieval(
@@ -398,8 +400,7 @@ class SingleStoreDocumentStore:
         *,
         filters: Optional[dict[str, Any]] = None,
         top_k: int = 10,
-        vector_similarity_function: Optional[
-            Literal["dot_product", "euclidean_distance"]] = None,
+        vector_similarity_function: Optional[Literal["dot_product", "euclidean_distance"]] = None,
     ) -> list[Document]:
         """
         Retrieves documents that are most similar to the query embedding using a vector similarity metric.
@@ -432,16 +433,12 @@ class SingleStoreDocumentStore:
             msg = "vector_similarity_function must be one of ['dot_product', 'euclidean_distance']"
             raise ValueError(msg)
 
-        sql_select = SELECT_WITH_SCORE_QUERY.format(score_definition,
-                                                    escape_table(
-                                                        self.database_name,
-                                                        self.table_name))
+        sql_select = SELECT_WITH_SCORE_QUERY.format(score_definition, escape_table(self.database_name, self.table_name))
 
         sql_where_clause = ""
         params = ()
         if filters:
-            sql_where_clause, params = _convert_filters_to_where_clause_and_params(
-                filters)
+            sql_where_clause, params = _convert_filters_to_where_clause_and_params(filters)
 
         # we always want to return the most similar documents first
         # so when using euclidean_distance, the sort order must be ASC
@@ -452,15 +449,13 @@ class SingleStoreDocumentStore:
         sql_query = sql_select + sql_where_clause + sql_sort
 
         result = self._execute_sql(
-            sql_query, params,
-            error_msg="Could not retrieve documents from SingleStoreDocumentStore."
+            sql_query, params, error_msg="Could not retrieve documents from SingleStoreDocumentStore."
         )
 
         return from_s2_to_haystack_documents(result.fetchall(), with_score=True)
 
     def _bm25_retrieval(
-        self, query: str, filters: Optional[dict[str, Any]] = None,
-        top_k: Optional[int] = None
+        self, query: str, filters: Optional[dict[str, Any]] = None, top_k: Optional[int] = None
     ) -> list[Document]:
         """
         Retrieves documents that are most similar to `query`, using the BM25 algorithm.
@@ -485,24 +480,19 @@ class SingleStoreDocumentStore:
         # TODO: add several versions
         # TODO: check and understand how this BM25 works
         score_definition = f" BM25({escape_table(self.database_name, self.table_name)}, 'content:{query}')"
-        sql_select = SELECT_WITH_SCORE_QUERY.format(score_definition,
-                                                    escape_table(
-                                                        self.database_name,
-                                                        self.table_name))
+        sql_select = SELECT_WITH_SCORE_QUERY.format(score_definition, escape_table(self.database_name, self.table_name))
 
         sql_where_clause = ""
         params = ()
         if filters:
-            sql_where_clause, params = _convert_filters_to_where_clause_and_params(
-                filters)
+            sql_where_clause, params = _convert_filters_to_where_clause_and_params(filters)
 
         sql_sort = f" ORDER BY score DESC LIMIT {top_k}"
 
         sql_query = sql_select + sql_where_clause + sql_sort
 
         result = self._execute_sql(
-            sql_query, params,
-            error_msg="Could not retrieve documents from SingleStoreDocumentStore."
+            sql_query, params, error_msg="Could not retrieve documents from SingleStoreDocumentStore."
         ).fetchall()
 
         return from_s2_to_haystack_documents(result, with_score=True)
