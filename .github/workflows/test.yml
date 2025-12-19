@@ -36,7 +36,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [ "3.9", "3.13" ]
-        singlestore_version: ${{ fromJson(needs.fetch-s2-versions.outputs.versions) }}
+        singlestore-version: ${{ fromJson(needs.fetch-s2-versions.outputs.versions) }}
 
     services:
       singlestore:
@@ -47,7 +47,7 @@ jobs:
           # if you want a free SingleStore license for your own use please visit https://www.singlestore.com/cloud-trial/
           SINGLESTORE_LICENSE: ${{ secrets.SINGLESTORE_LICENSE }}
           ROOT_PASSWORD: ${{ secrets.ROOT_PASSWORD }}
-          SINGELSTORE_VERSION: ${{ matrix.singlestore_version }}
+          SINGELSTORE_VERSION: ${{ matrix.singlestore-version }}
 
     steps:
       - uses: actions/checkout@v3
@@ -68,7 +68,7 @@ jobs:
           sudo apt-get clean
           echo "=== AFTER ==="
           df -h
-          
+
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
