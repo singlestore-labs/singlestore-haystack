@@ -19,13 +19,35 @@ env:
   FORCE_COLOR: "1"
 
 jobs:
+  fetch-s2-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.get_versions.outputs.versions }}
+    steps:
+      - name: Get supported versions of Singlestore
+        id: get_versions
+        uses: singlestore-labs/singlestore-supported-versions@main
+
   run:
-    name: Python ${{ matrix.python-version }}, SingleStore ${{ }}
+    needs: fetch-s2-versions
+    name: Python ${{ matrix.python-version }}, SingleStore ${{ matrix.singlestore-version }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         python-version: [ "3.9", "3.13" ]
+        singlestore_version: ${{ fromJson(needs.fetch-s2-versions.outputs.versions) }}
+
+    services:
+      singlestore:
+        image: ghcr.io/singlestore-labs/singlestoredb-dev:latest
+        ports:
+          - "3306:3306"
+        env:
+          # if you want a free SingleStore license for your own use please visit https://www.singlestore.com/cloud-trial/
+          SINGLESTORE_LICENSE: ${{ secrets.SINGLESTORE_LICENSE }}
+          ROOT_PASSWORD: ${{ secrets.ROOT_PASSWORD }}
+          SINGELSTORE_VERSION: ${{ matrix.singlestore_version }}
 
     steps:
       - uses: actions/checkout@v3
@@ -43,4 +65,9 @@ jobs:
         run: hatch run fmt-check && hatch run test:types
 
       - name: Run tests
+        env:
+          DB_HOST: localhost
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASSWORD: ${{ secrets.ROOT_PASSWORD }}
         run: hatch run test:all
