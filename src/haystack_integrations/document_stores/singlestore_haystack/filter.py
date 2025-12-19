@@ -1,12 +1,12 @@
 from datetime import datetime
-from typing import Tuple, Dict, Any, Literal, List
+from typing import Any, Literal
 
 from haystack.errors import FilterError
 
 
 def _convert_filters_to_where_clause_and_params(
-    filters: Dict[str, Any], operator: Literal["WHERE", "AND"] = "WHERE"
-) -> Tuple[str, Tuple]:
+    filters: dict[str, Any], operator: Literal["WHERE", "AND"] = "WHERE"
+) -> tuple[str, tuple]:
     """
     Convert Haystack filters to a WHERE clause and a tuple of params to query SingleStore.
     """
@@ -20,8 +20,7 @@ def _convert_filters_to_where_clause_and_params(
     return where_clause, tuple(params)
 
 
-def _parse_logical_condition(condition: Dict[str, Any]) -> Tuple[
-    str, List[Any]]:
+def _parse_logical_condition(condition: dict[str, Any]) -> tuple[str, list[Any]]:
     if "operator" not in condition:
         msg = f"'operator' key missing in {condition}"
         raise FilterError(msg)
@@ -58,8 +57,7 @@ def _parse_logical_condition(condition: Dict[str, Any]) -> Tuple[
     return sql_query, values
 
 
-def _parse_comparison_condition(condition: Dict[str, Any]) -> Tuple[
-    str, List[Any]]:
+def _parse_comparison_condition(condition: dict[str, Any]) -> tuple[str, list[Any]]:
     field: str = condition["field"]
     if "operator" not in condition:
         msg = f"'operator' key missing in {condition}"
@@ -97,39 +95,39 @@ def _treat_meta_field(field: str, value: Any) -> str:
         return f"{prefix}::{final_field}"
 
 
-def _equal(field: str, value: Any) -> Tuple[str, List[Any]]:
+def _equal(field: str, value: Any) -> tuple[str, list[Any]]:
     if value is None:
         return f"{field} IS NULL", []
     return f"{field} = %s", [value]
 
 
-def _not_equal(field: str, value: Any) -> Tuple[str, List[Any]]:
+def _not_equal(field: str, value: Any) -> tuple[str, list[Any]]:
     if value is None:
         return f"{field} IS NOT NULL", []
     return f"{field} IS NULL OR {field} != %s", [value]
 
 
-def _greater_than(field: str, value: Any) -> Tuple[str, List[Any]]:
+def _greater_than(field: str, value: Any) -> tuple[str, list[Any]]:
     _comparable_value_check(value)
     return f"{field} > %s", [value]
 
 
-def _greater_than_equal(field: str, value: Any) -> Tuple[str, List[Any]]:
+def _greater_than_equal(field: str, value: Any) -> tuple[str, list[Any]]:
     _comparable_value_check(value)
     return f"{field} >= %s", [value]
 
 
-def _less_than(field: str, value: Any) -> Tuple[str, List[Any]]:
+def _less_than(field: str, value: Any) -> tuple[str, list[Any]]:
     _comparable_value_check(value)
     return f"{field} < %s", [value]
 
 
-def _less_than_equal(field: str, value: Any) -> Tuple[str, List[Any]]:
+def _less_than_equal(field: str, value: Any) -> tuple[str, list[Any]]:
     _comparable_value_check(value)
     return f"{field} <= %s", [value]
 
 
-def _comparable_value_check(value: Any):
+def _comparable_value_check(value: Any) -> None:
     if isinstance(value, str):
         try:
             datetime.fromisoformat(value)
@@ -144,7 +142,7 @@ def _comparable_value_check(value: Any):
         raise FilterError(msg)
 
 
-def _not_in(field: str, value: Any) -> Tuple[str, List[Any]]:
+def _not_in(field: str, value: Any) -> tuple[str, list[Any]]:
     if not isinstance(value, list):
         msg = f"{field}'s value must be a list when using 'not in' comparator"
         raise FilterError(msg)
@@ -152,7 +150,7 @@ def _not_in(field: str, value: Any) -> Tuple[str, List[Any]]:
     return f"{field} IS NULL OR {field} NOT IN({','.join(['%s'] * len(value))})", value
 
 
-def _in(field: str, value: Any) -> Tuple[str, List[Any]]:
+def _in(field: str, value: Any) -> tuple[str, list[Any]]:
     if not isinstance(value, list):
         msg = f"{field}'s value must be a list when using 'in' comparator"
         raise FilterError(msg)
@@ -160,14 +158,14 @@ def _in(field: str, value: Any) -> Tuple[str, List[Any]]:
     return f"{field} IN({','.join(['%s'] * len(value))})", value
 
 
-def _like(field: str, value: Any) -> Tuple[str, List[Any]]:
+def _like(field: str, value: Any) -> tuple[str, list[Any]]:
     if not isinstance(value, str):
         msg = f"{field}'s value must be a str when using 'LIKE' "
         raise FilterError(msg)
     return f"{field} LIKE %s", [value]
 
 
-def _not_like(field: str, value: Any) -> Tuple[str, List[Any]]:
+def _not_like(field: str, value: Any) -> tuple[str, list[Any]]:
     if not isinstance(value, str):
         msg = f"{field}'s value must be a str when using 'NOT LIKE' "
         raise FilterError(msg)

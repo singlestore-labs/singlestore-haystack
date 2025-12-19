@@ -4,4 +4,4 @@
 from .bm25_retriever import SingleStoreBM25Retriever
 from .embedding_retriever import SingleStoreEmbeddingRetriever
 
-__all__ = ["SingleStoreEmbeddingRetriever", "SingleStoreBM25Retriever"]
+__all__ = ["SingleStoreBM25Retriever", "SingleStoreEmbeddingRetriever"]

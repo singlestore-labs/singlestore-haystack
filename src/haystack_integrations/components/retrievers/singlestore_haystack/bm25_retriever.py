@@ -1,23 +1,20 @@
-from typing import Optional, Dict, Any, Union, List
-from xml.dom.minidom import Document
+from typing import Any, Optional, Union
 
-from haystack import component, default_to_dict, default_from_dict
+from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import FilterPolicy, apply_filter_policy
 
-from haystack_integrations.document_stores.singlestore_haystack import \
-    SingleStoreDocumentStore
+from haystack_integrations.document_stores.singlestore_haystack import SingleStoreDocumentStore
 
 
 @component
 class SingleStoreBM25Retriever:
-
     def __init__(
-            self,
-            *,
-            document_store: SingleStoreDocumentStore,
-            filters: Optional[Dict[str, Any]] = None,
-            top_k: int = 10,
-            filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
+        self,
+        *,
+        document_store: SingleStoreDocumentStore,
+        filters: Optional[dict[str, Any]] = None,
+        top_k: int = 10,
+        filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
     ):
         if not isinstance(document_store, SingleStoreDocumentStore):
             msg = "document_store must be an instance of SingleStoreDocumentStore"
@@ -27,17 +24,15 @@ class SingleStoreBM25Retriever:
         self.filters = filters or {}
         self.top_k = top_k
         self.filter_policy = (
-            filter_policy if isinstance(filter_policy,
-                                        FilterPolicy) else FilterPolicy.from_str(
-                filter_policy)
+            filter_policy if isinstance(filter_policy, FilterPolicy) else FilterPolicy.from_str(filter_policy)
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
 
         :returns:
-            Dictionary with serialized data.
+            dictionary with serialized data.
         """
         return default_to_dict(
             self,
@@ -48,34 +43,30 @@ class SingleStoreBM25Retriever:
         )
 
     @classmethod
-    def from_dict(cls,
-                  data: Dict[str, Any]) -> "SingleStoreBM25Retriever":
+    def from_dict(cls, data: dict[str, Any]) -> "SingleStoreBM25Retriever":
         """
         Deserializes the component from a dictionary.
 
         :param data:
-            Dictionary to deserialize from.
+            dictionary to deserialize from.
         :returns:
             Deserialized component.
         """
         doc_store_params = data["init_parameters"]["document_store"]
-        data["init_parameters"][
-            "document_store"] = SingleStoreDocumentStore.from_dict(
-            doc_store_params)
+        data["init_parameters"]["document_store"] = SingleStoreDocumentStore.from_dict(doc_store_params)
         # Pipelines serialized with old versions of the component might not
         # have the filter_policy field.
         if filter_policy := data["init_parameters"].get("filter_policy"):
-            data["init_parameters"][
-                "filter_policy"] = FilterPolicy.from_str(filter_policy)
+            data["init_parameters"]["filter_policy"] = FilterPolicy.from_str(filter_policy)
         return default_from_dict(cls, data)
 
-    @component.output_types(documents=List[Document])
+    @component.output_types(documents=list[Document])
     def run(
-            self,
-            query: str,
-            filters: Optional[Dict[str, Any]] = None,
-            top_k: Optional[int] = None,
-    ):
+        self,
+        query: str,
+        filters: Optional[dict[str, Any]] = None,
+        top_k: Optional[int] = None,
+    ) -> dict[str, list[Document]]:
         """
         Retrieve documents from the `SingleStoreDocumentStore`, based on their embeddings.
 
@@ -85,15 +76,10 @@ class SingleStoreBM25Retriever:
                         details.
         :param top_k: Maximum number of Documents to return.
 
-        :returns: List of Documents similar to `query_embedding`.
+        :returns: list of Documents similar to `query_embedding`.
         """
-        filters = apply_filter_policy(self.filter_policy, self.filters,
-                                      filters)
+        filters = apply_filter_policy(self.filter_policy, self.filters, filters)
         top_k = top_k or self.top_k
 
-        docs = self.document_store._bm25_retrieval(
-            query=query,
-            filters=filters,
-            top_k=top_k
-        )
+        docs = self.document_store._bm25_retrieval(query=query, filters=filters, top_k=top_k)
         return {"documents": docs}

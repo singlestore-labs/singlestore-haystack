@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
@@ -7,20 +7,21 @@ name = "singlestore-haystack"
 dynamic = ["version"]
 description = 'Haystack 2.x Document Store for SingleStore'
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 license = "Apache-2.0"
 keywords = []
 authors = [
     { name = "SingleStore", email = "team@singlestore.com" },
 ]
 classifiers = [
+    "License :: OSI Approved :: Apache Software License",
     "Development Status :: 4 - Beta",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
@@ -39,63 +40,53 @@ Source = "https://github.com/singlestore-labs/singlestore-haystack"
 packages = ["src/haystack_integrations"]
 
 [tool.hatch.version]
-path = "src/haystack_integrations/document_stores/singlestore_haystack/__about__.py"
+source = "vcs"
+tag-pattern = 'v(?P<version>.*)'
 
 [tool.hatch.envs.default]
 dependencies = [
-    "coverage[toml]>=6.5",
+    "ruff",
     "pytest",
 ]
+
 [tool.hatch.envs.default.scripts]
 test = "pytest {args:tests}"
-test-cov = "coverage run -m pytest {args:tests}"
-cov-report = [
-    "- coverage combine",
-    "coverage report",
-]
-cov = [
-    "test-cov",
-    "cov-report",
-]
+fmt = "ruff check --fix {args} && ruff format {args}"
+fmt-check = "ruff check {args} && ruff format --check {args}"
 
-[[tool.hatch.envs.all.matrix]]
-python = ["3.7", "3.8", "3.9", "3.10", "3.11"]
-
-[tool.hatch.envs.lint]
-detached = true
+[tool.hatch.envs.test]
 dependencies = [
-    "black>=23.1.0",
-    "mypy>=1.0.0",
-    "ruff>=0.0.243",
-]
-[tool.hatch.envs.lint.scripts]
-typing = "mypy --install-types --non-interactive --explicit-package-bases {args:src/haystack_integrations}"
-style = [
-    "ruff check {args:.}",
-    "black --check --diff {args:.}",
-]
-fmt = [
-    "black {args:.}",
-    "ruff --fix {args:.}",
-    "style",
-]
-all = [
-    "style",
-    "typing",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-rerunfailures",
+    "mypy",
+    "pip"
 ]
 
-[tool.hatch.metadata]
-allow-direct-references = true
+[tool.hatch.envs.test.scripts]
+all = 'pytest {args:tests}'
+types = "mypy -p haystack_integrations.document_stores.singlestore_haystack -p haystack_integrations.components.retrievers.singlestore_haystack {args}"
 
-[tool.black]
-target-version = ["py37"]
-line-length = 120
-skip-string-normalization = true
+[tool.mypy]
+install_types = true
+non_interactive = true
+check_untyped_defs = true
+disallow_incomplete_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    # singlestoredb does not provide types
+    "singlestoredb.*",
+]
+ignore_missing_imports = true
+
 
 [tool.ruff]
-target-version = "py37"
+target-version = "py39"
 line-length = 120
-lint.select = [
+
+[tool.ruff.lint]
+select = [
     "A",
     "ARG",
     "B",
@@ -122,23 +113,33 @@ lint.select = [
     "W",
     "YTT",
 ]
-lint.ignore = [
+ignore = [
     # Allow non-abstract empty methods in abstract base classes
     "B027",
     # Allow boolean positional values in function calls, like `dict.get(... True)`
     "FBT003",
     # Ignore checks for possible passwords
-    "S105", "S106", "S107",
+    "S105",
+    "S106",
+    "S107",
     # Ignore complexity
-    "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915",
+    "C901",
+    "PLR0911",
+    "PLR0912",
+    "PLR0913",
+    "PLR0915",
+    # ignore function-call-in-default-argument
+    "B008",
+    # ignore assertions
+    "S101",
 ]
-lint.unfixable = [
+unfixable = [
     # Don't touch unused imports
     "F401",
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["singlestore_haystack"]
+known-first-party = ["haystack_integrations"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "parents"
@@ -146,37 +147,5 @@ ban-relative-imports = "parents"
 [tool.ruff.lint.per-file-ignores]
 # Tests can use magic values, assertions, and relative imports
 "tests/**/*" = ["PLR2004", "S101", "TID252"]
-
-[tool.coverage.run]
-source_pkgs = ["singlestore_haystack", "tests"]
-branch = true
-parallel = true
-omit = [
-    "src/singlestore_haystack/__about__.py",
-]
-
-[tool.coverage.paths]
-singlestore_haystack = ["src/singlestore_haystack", "*/singlestore-haystack/src/singlestore_haystack"]
-tests = ["tests", "*/singlestore-haystack/tests"]
-
-[tool.coverage.report]
-exclude_lines = [
-    "no cov",
-    "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:",
-]
-
-[tool.pytest.ini_options]
-minversion = "6.0"
-markers = [
-    "unit: unit tests",
-    "integration: integration tests"
-]
-
-[[tool.mypy.overrides]]
-module = [
-    "haystack.*",
-    "pytest.*",
-    "haystack_integrations.*"
-]
-ignore_missing_imports = true
+# examples can contain "print" commands
+"examples/**/*" = ["T201"]
