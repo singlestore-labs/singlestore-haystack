@@ -8,7 +8,7 @@ from typing import Any, Literal, Optional, Union
 
 import singlestoredb as s2
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.dataclasses import Document
+from haystack.dataclasses import ByteStream, Document
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.utils.auth import Secret, deserialize_secrets_inplace
@@ -21,11 +21,25 @@ from haystack_integrations.document_stores.singlestore_haystack.filter import (
 
 logger = logging.getLogger(__name__)
 
+CREATE_TABLE_QUERY = """CREATE TABLE IF NOT EXISTS {} (
+    id VARCHAR(128) PRIMARY KEY,
+    embedding VECTOR({}, F32),
+    content LONGTEXT,
+    blob_data LONGBLOB,
+    blob_meta JSON,
+    blob_mime_type TINYTEXT,
+    meta JSON,
+    FULLTEXT USING VERSION 2 fi(content),
+    VECTOR INDEX vi(embedding)
+    )"""
 COUNT_QUERY = "SELECT COUNT(*) AS count FROM {}"
 SELECT_WITH_SCORE_QUERY = "SELECT *, {} AS score FROM {}"
 SELECT_QUERY = "SELECT * FROM {}"
 DELETE_QUERY = "DELETE FROM {} WHERE id IN ({})"
-LOAD_DATA_QUERY = "LOAD DATA LOCAL INFILE ':stream:' {} INTO TABLE {}(id, embedding, content, meta)"
+LOAD_DATA_QUERY = (
+    "LOAD DATA LOCAL INFILE ':stream:' {} INTO TABLE "
+    "{}(id, embedding, content, blob_data, blob_meta, blob_mime_type, meta)"
+)
 
 
 def escape_string_literal(s: str) -> str:
@@ -53,7 +67,7 @@ def connection_is_valid(connection: Connection) -> bool:
         return False
 
 
-def escape_tsv(data: Union[str, None]) -> str:
+def escape_tsv(data: Union[str, bytes, None]) -> str:
     if data is not None:
         return data.replace("\\", "\\\\").replace("\n", "\\n").replace("\t", "\\t")
     else:
@@ -71,9 +85,12 @@ def from_haystack_to_tsv_documents(documents: list[Document]) -> Generator[str, 
     for document in documents:
         identifier = escape_tsv(document.id)
         content = escape_tsv(document.content)
+        blob_data = escape_tsv(document.blob.data) if document.blob else escape_tsv(None)
+        blob_meta = escape_tsv_json(document.blob.meta) if document.blob else escape_tsv_json(None)
+        blob_mime_type = escape_tsv(document.blob.mime_type) if document.blob else escape_tsv(None)
         meta = escape_tsv_json(document.meta)
         embedding = escape_tsv_json(document.embedding)
-        yield "\t".join([identifier, embedding, content, meta]) + "\n"
+        yield "\t".join([identifier, embedding, content, blob_data, blob_meta, blob_mime_type, meta]) + "\n"
 
 
 def from_s2_to_haystack_documents(res: Result, *, with_score: bool = False) -> list[Document]:
@@ -88,10 +105,14 @@ def from_s2_to_haystack_documents(res: Result, *, with_score: bool = False) -> l
             msg = f"Unexpected row type: {type(row)}"
             raise TypeError(msg)
 
+        blob = None
+        if row[4] is not None:
+            blob = ByteStream(data=row[3], meta=row[4], mime_type=row[5])
+
         if with_score:
-            document = Document(id=row[0], embedding=row[1], content=row[2], meta=row[3], score=row[4])
+            document = Document(id=row[0], embedding=row[1], content=row[2], blob=blob, meta=row[6], score=row[7])
         else:
-            document = Document(id=row[0], embedding=row[1], content=row[2], meta=row[3])
+            document = Document(id=row[0], embedding=row[1], content=row[2], blob=blob, meta=row[6])
         documents.append(document)
 
     return documents
@@ -210,16 +231,9 @@ class SingleStoreDocumentStore:
         Creates the table to store Haystack documents if it doesn't exist yet.
         """
 
-        # TODO: check schema
-        create_sql = f"""CREATE TABLE IF NOT EXISTS {escape_table(self.database_name, self.table_name)} (
-        id VARCHAR(128) PRIMARY KEY,
-        embedding VECTOR({self.embedding_dimension}, F32),
-        content LONGTEXT,
-        meta JSON,
-        FULLTEXT USING VERSION 2 fi (content)
-        )"""
-        # TODO: add other data
-        # TODO: configure index creation
+        create_sql = CREATE_TABLE_QUERY.format(
+            escape_table(self.database_name, self.table_name), self.embedding_dimension
+        )
 
         self._execute_sql(create_sql, error_msg="Could not create table in SingleStoreDocumentStore.")
 
@@ -340,7 +354,6 @@ class SingleStoreDocumentStore:
         try:
             self.cursor.execute(sql_load_data, infile_stream=from_haystack_to_tsv_documents(documents))
             res = self.cursor.rowcount
-            # TODO: check when this is needed
             self.cursor.execute(f"OPTIMIZE TABLE {escape_table(self.database_name, self.table_name)} FLUSH")
             return res
         except s2.IntegrityError as ie:
