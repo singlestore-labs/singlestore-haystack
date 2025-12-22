@@ -76,6 +76,7 @@ class SingleStoreEmbeddingRetriever:
         filters: Optional[dict[str, Any]] = None,
         top_k: Optional[int] = None,
         vector_similarity_function: Optional[Literal["dot_product", "euclidean_distance"]] = "dot_product",
+        vector_search_options: Optional[dict[str, int]] = None,
     ) -> dict[str, list[Document]]:
         """
         Retrieve documents from the `SingleStoreDocumentStore`, based on their embeddings.
@@ -99,5 +100,6 @@ class SingleStoreEmbeddingRetriever:
             filters=filters,
             top_k=top_k,
             vector_similarity_function=vector_similarity_function,
+            vector_search_options=vector_search_options,
         )
         return {"documents": docs}

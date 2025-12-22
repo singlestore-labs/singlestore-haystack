@@ -15,6 +15,8 @@ class TestEmbeddingRetrieval:
             connection_string=Secret.from_token(f"{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}"),
             embedding_dimension=768,
             recreate_table=True,
+            dot_product_vector_index_options={"index_type": "IVF_PQFS"},
+            euclidian_distance_vector_index_options={"index_type": "IVF_PQFS"},
         )
 
         query_embedding = [0.1] * 768
@@ -44,6 +46,45 @@ class TestEmbeddingRetrieval:
             query_embedding=query_embedding,
             top_k=2,
             vector_similarity_function="euclidean_distance",
+        )["documents"]
+        assert len(results) == 2
+        assert results[0].content == "3rd best document (dot product)"
+        assert results[1].content == "2nd best document (dot product)"
+
+        results = retriever.run(
+            query_embedding=query_embedding,
+            top_k=2,
+            vector_similarity_function="euclidean_distance",
+            vector_search_options={"k": 3},
+        )["documents"]
+        assert len(results) == 2
+        assert results[0].content == "3rd best document (dot product)"
+        assert results[1].content == "2nd best document (dot product)"
+
+        document_store = SingleStoreDocumentStore(
+            connection_string=Secret.from_token(f"{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}"),
+            embedding_dimension=768,
+            recreate_table=True,
+            use_dot_product_vector_index=False,
+            use_euclidian_distance_vector_index=False,
+        )
+        document_store.write_documents(docs)
+
+        retriever = SingleStoreEmbeddingRetriever(document_store=document_store)
+        results = retriever.run(
+            query_embedding=query_embedding,
+            top_k=2,
+            vector_similarity_function="euclidean_distance",
+        )["documents"]
+        assert len(results) == 2
+        assert results[0].content == "3rd best document (dot product)"
+        assert results[1].content == "2nd best document (dot product)"
+
+        results = retriever.run(
+            query_embedding=query_embedding,
+            top_k=2,
+            vector_similarity_function="euclidean_distance",
+            vector_search_options={"k": 3},
         )["documents"]
         assert len(results) == 2
         assert results[0].content == "3rd best document (dot product)"

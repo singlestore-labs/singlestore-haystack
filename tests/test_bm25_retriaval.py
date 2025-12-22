@@ -17,6 +17,9 @@ class TestBM25Retrieval(unittest.TestCase):
             connection_string=Secret.from_token(f"{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}"),
             embedding_dimension=768,
             recreate_table=True,
+            fulltext_index_options={
+                "analyzer": "standard",
+            },
         )
 
         docs = [
@@ -73,3 +76,13 @@ class TestBM25Retrieval(unittest.TestCase):
                 top_k=2,
                 bm25_function="BM25_WRONG",
             )
+
+        document_store = SingleStoreDocumentStore(
+            connection_string=Secret.from_token(f"{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}"),
+            embedding_dimension=768,
+            recreate_table=True,
+            use_fulltext_index=False,
+        )
+
+        with self.assertRaises(ValueError):
+            SingleStoreBM25Retriever(document_store=document_store)
