@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2023-present John Doe <jd@example.com>
 #
 # SPDX-License-Identifier: Apache-2.0
+import unittest
+
 from haystack.dataclasses import Document
 from haystack.utils import Secret
 
@@ -9,7 +11,7 @@ from tests.util import DB_HOST, DB_PASSWORD, DB_PORT, DB_USER
 
 
 # TODO: improve tests
-class TestBM25Retrieval:
+class TestBM25Retrieval(unittest.TestCase):
     def test_embedding_retrieval_dot_product(self):
         document_store = SingleStoreDocumentStore(
             connection_string=Secret.from_token(f"{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}"),
@@ -38,9 +40,34 @@ class TestBM25Retrieval:
         results = document_store._bm25_retrieval(
             query="database",
             top_k=2,
+            bm25_function="BM25",
         )
         assert len(results) == 2
         assert [results[0].content, results[1].content] == [
             "Fundamentals of designing a robust and scalable database.",
             "Learn about various optimization techniques to improve database performance.",
         ]
+
+        results = document_store._bm25_retrieval(
+            query="database",
+            top_k=2,
+            bm25_function="BM25_GLOBAL",
+        )
+        assert len(results) == 2
+        assert [results[0].content, results[1].content] == [
+            "Fundamentals of designing a robust and scalable database.",
+            "Learn about various optimization techniques to improve database performance.",
+        ]
+
+        with self.assertRaises(ValueError):
+            document_store._bm25_retrieval(
+                query="database",
+                top_k=2,
+            )
+
+        with self.assertRaises(ValueError):
+            document_store._bm25_retrieval(
+                query="database",
+                top_k=2,
+                bm25_function="BM25_WRONG",
+            )

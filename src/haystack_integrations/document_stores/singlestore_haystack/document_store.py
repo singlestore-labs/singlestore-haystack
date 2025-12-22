@@ -67,21 +67,26 @@ def connection_is_valid(connection: Connection) -> bool:
         return False
 
 
-def escape_tsv(data: Union[str, bytes, None]) -> str:
-    if data is not None:
-        return data.replace("\\", "\\\\").replace("\n", "\\n").replace("\t", "\\t")
-    else:
+def escape_tsv(data: Union[str, bytes, None]) -> Union[str, bytes]:
+    if data is None:
         return "\\N"
+    elif isinstance(data, str):
+        return data.replace("\\", "\\\\").replace("\n", "\\n").replace("\t", "\\t")
+    elif isinstance(data, bytes):
+        return data.replace(b"\\", b"\\\\").replace(b"\n", b"\\n").replace(b"\t", b"\\t")
+    else:
+        msg = f"Unexpected data type: {type(data)}"
+        raise TypeError(msg)
 
 
-def escape_tsv_json(data: Any) -> str:
+def escape_tsv_json(data: Any) -> Union[str, bytes]:
     if data is not None:
         return escape_tsv(json.dumps(data))
     else:
         return "\\N"
 
 
-def from_haystack_to_tsv_documents(documents: list[Document]) -> Generator[str, None, None]:
+def from_haystack_to_tsv_documents(documents: list[Document]) -> Generator[Union[str, bytes], None, None]:
     for document in documents:
         identifier = escape_tsv(document.id)
         content = escape_tsv(document.content)
@@ -90,7 +95,20 @@ def from_haystack_to_tsv_documents(documents: list[Document]) -> Generator[str, 
         blob_mime_type = escape_tsv(document.blob.mime_type) if document.blob else escape_tsv(None)
         meta = escape_tsv_json(document.meta)
         embedding = escape_tsv_json(document.embedding)
-        yield "\t".join([identifier, embedding, content, blob_data, blob_meta, blob_mime_type, meta]) + "\n"
+        yield identifier
+        yield "\t"
+        yield embedding
+        yield "\t"
+        yield content
+        yield "\t"
+        yield blob_data
+        yield "\t"
+        yield blob_meta
+        yield "\t"
+        yield blob_mime_type
+        yield "\t"
+        yield meta
+        yield "\n"
 
 
 def from_s2_to_haystack_documents(res: Result, *, with_score: bool = False) -> list[Document]:
@@ -468,7 +486,11 @@ class SingleStoreDocumentStore:
         return from_s2_to_haystack_documents(result.fetchall(), with_score=True)
 
     def _bm25_retrieval(
-        self, query: str, filters: Optional[dict[str, Any]] = None, top_k: Optional[int] = None
+        self,
+        query: str,
+        filters: Optional[dict[str, Any]] = None,
+        top_k: Optional[int] = None,
+        bm25_function: Optional[Literal["BM25", "BM25_GLOBAL"]] = None,
     ) -> list[Document]:
         """
         Retrieves documents that are most similar to `query`, using the BM25 algorithm.
@@ -480,6 +502,9 @@ class SingleStoreDocumentStore:
         :param query: Text of the query.
         :param filters: Filters applied to the retrieved Documents.
         :param top_k: Maximum number of Documents to return.
+        :param bm25_function: The BM25 function to use. Currently, only "BM25" and "BM25_GLOBAL" are supported.
+        The BM25 function is more efficient, but potentially less accurate than the BM25_GLOBAL function.
+        However, with careful data distribution, BM25 can provide accurate scores, comparable to those of BM25_GLOBAL.
 
 
         :raises ValueError: If `query` is an empty string.
@@ -490,9 +515,12 @@ class SingleStoreDocumentStore:
             msg = "query must not be None"
             raise ValueError(msg)
 
-        # TODO: add several versions
+        if bm25_function not in ["BM25", "BM25_GLOBAL"]:
+            msg = 'bm25_function must be one of ["BM25", "BM25_GLOBAL"]'
+            raise ValueError(msg)
+
         # TODO: check and understand how this BM25 works
-        score_definition = f" BM25({escape_table(self.database_name, self.table_name)}, 'content:{query}')"
+        score_definition = f" {bm25_function}({escape_table(self.database_name, self.table_name)}, 'content:{query}')"
         sql_select = SELECT_WITH_SCORE_QUERY.format(score_definition, escape_table(self.database_name, self.table_name))
 
         sql_where_clause = ""

@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import FilterPolicy, apply_filter_policy
@@ -66,6 +66,7 @@ class SingleStoreBM25Retriever:
         query: str,
         filters: Optional[dict[str, Any]] = None,
         top_k: Optional[int] = None,
+        bm25_function: Optional[Literal["BM25", "BM25_GLOBAL"]] = None,
     ) -> dict[str, list[Document]]:
         """
         Retrieve documents from the `SingleStoreDocumentStore`, based on their embeddings.
@@ -75,11 +76,16 @@ class SingleStoreBM25Retriever:
                         the `filter_policy` chosen at retriever initialization. See the init method docstring for more
                         details.
         :param top_k: Maximum number of Documents to return.
+        :param bm25_function: The BM25 function to use. Currently, only "BM25" and "BM25_GLOBAL" are supported.
+        The BM25 function is more efficient, but potentially less accurate than the BM25_GLOBAL function.
+        However, with careful data distribution, BM25 can provide accurate scores, comparable to those of BM25_GLOBAL.
 
         :returns: list of Documents similar to `query_embedding`.
         """
         filters = apply_filter_policy(self.filter_policy, self.filters, filters)
         top_k = top_k or self.top_k
 
-        docs = self.document_store._bm25_retrieval(query=query, filters=filters, top_k=top_k)
+        docs = self.document_store._bm25_retrieval(
+            query=query, filters=filters, top_k=top_k, bm25_function=bm25_function
+        )
         return {"documents": docs}
