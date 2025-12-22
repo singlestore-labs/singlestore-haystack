@@ -11,13 +11,13 @@ VALID_VECTOR_SIMILARITY_FUNCTIONS = ["dot_product", "euclidean_distance"]
 @component
 class SingleStoreEmbeddingRetriever:
     def __init__(
-            self,
-            *,
-            document_store: SingleStoreDocumentStore,
-            filters: Optional[dict[str, Any]] = None,
-            top_k: int = 10,
-            vector_similarity_function: Optional[Literal["dot_product", "euclidean_distance"]] = "dot_product",
-            filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
+        self,
+        *,
+        document_store: SingleStoreDocumentStore,
+        filters: Optional[dict[str, Any]] = None,
+        top_k: int = 10,
+        vector_similarity_function: Optional[Literal["dot_product", "euclidean_distance"]] = "dot_product",
+        filter_policy: Union[str, FilterPolicy] = FilterPolicy.REPLACE,
     ):
         if not isinstance(document_store, SingleStoreDocumentStore):
             msg = "document_store must be an instance of SingleStoreDocumentStore"
@@ -71,12 +71,12 @@ class SingleStoreEmbeddingRetriever:
 
     @component.output_types(documents=list[Document])
     def run(
-            self,
-            query_embedding: list[float],
-            filters: Optional[dict[str, Any]] = None,
-            top_k: Optional[int] = None,
-            vector_similarity_function: Optional[Literal["dot_product", "euclidean_distance"]] = "dot_product",
-            vector_search_options: Optional[dict[str, int]] = None,
+        self,
+        query_embedding: list[float],
+        filters: Optional[dict[str, Any]] = None,
+        top_k: Optional[int] = None,
+        vector_similarity_function: Optional[Literal["dot_product", "euclidean_distance"]] = "dot_product",
+        vector_search_options: Optional[dict[str, int]] = None,
     ) -> dict[str, list[Document]]:
         """
         Retrieve documents from the `SingleStoreDocumentStore`, based on their embeddings.
@@ -88,7 +88,8 @@ class SingleStoreEmbeddingRetriever:
         :param top_k: Maximum number of Documents to return.
         :param vector_similarity_function: The similarity function to use when searching for similar embeddings.
         :param vector_search_options: Additional options for vector search, e.g., {"k": 100} to search top 100
-                                      candidates before applying top_k and filters. See SingleStore documentation for more details.
+                                      candidates before applying top_k and filters.
+                                      See SingleStore documentation for more details.
                                       https://docs.singlestore.com/cloud/developer-resources/functional-extensions/tuning-vector-indexes-and-queries/
 
         :returns: A dictionary with the following keys:
