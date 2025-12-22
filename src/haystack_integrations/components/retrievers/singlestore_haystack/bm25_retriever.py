@@ -66,12 +66,13 @@ class SingleStoreBM25Retriever:
         query: str,
         filters: Optional[dict[str, Any]] = None,
         top_k: Optional[int] = None,
-        bm25_function: Optional[Literal["BM25", "BM25_GLOBAL"]] = None,
+        bm25_function: Optional[Literal["BM25", "BM25_GLOBAL"]] = "BM25",
     ) -> dict[str, list[Document]]:
         """
         Retrieve documents from the `SingleStoreDocumentStore`, based on their embeddings.
 
-        :param query: Text of the query. SingleStore supports following operators in the query: https://docs.singlestore.com/cloud/reference/sql-reference/full-text-search-functions/bm-25/#operators
+        :param query: String to search in the `Document`s text.
+                      SingleStore supports the following operators in the query: https://docs.singlestore.com/cloud/reference/sql-reference/full-text-search-functions/bm-25/#operators
         :param filters: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
                         the `filter_policy` chosen at retriever initialization. See the init method docstring for more
                         details.
@@ -80,7 +81,8 @@ class SingleStoreBM25Retriever:
         The BM25 function is more efficient, but potentially less accurate than the BM25_GLOBAL function.
         However, with careful data distribution, BM25 can provide accurate scores, comparable to those of BM25_GLOBAL.
 
-        :returns: list of Documents similar to `query_embedding`.
+        :returns: A dictionary with the following keys:
+            - `documents`: List of `Document`s that match the query.
         """
         filters = apply_filter_policy(self.filter_policy, self.filters, filters)
         top_k = top_k or self.top_k

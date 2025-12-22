@@ -471,7 +471,7 @@ class SingleStoreDocumentStore:
         if filters:
             sql_where_clause, params = _convert_filters_to_where_clause_and_params(filters)
 
-        # we always want to return the most similar documents first
+        # we always want to return the most similar documents first,
         # so when using euclidean_distance, the sort order must be ASC
         sort_order = "ASC" if vector_similarity_function == "euclidean_distance" else "DESC"
 

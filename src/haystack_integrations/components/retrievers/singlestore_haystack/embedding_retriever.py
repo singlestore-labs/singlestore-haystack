@@ -87,7 +87,8 @@ class SingleStoreEmbeddingRetriever:
         :param top_k: Maximum number of Documents to return.
         :param vector_similarity_function: The similarity function to use when searching for similar embeddings.
 
-        :returns: list of Documents similar to `query_embedding`.
+        :returns: A dictionary with the following keys:
+            - `documents`: List of `Document`s that are similar to `query_embedding`.
         """
         filters = apply_filter_policy(self.filter_policy, self.filters, filters)
         top_k = top_k or self.top_k

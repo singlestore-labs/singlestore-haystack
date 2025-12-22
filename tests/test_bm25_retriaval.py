@@ -6,11 +6,11 @@ import unittest
 from haystack.dataclasses import Document
 from haystack.utils import Secret
 
+from haystack_integrations.components.retrievers.singlestore_haystack import SingleStoreBM25Retriever
 from haystack_integrations.document_stores.singlestore_haystack import SingleStoreDocumentStore
 from tests.util import DB_HOST, DB_PASSWORD, DB_PORT, DB_USER
 
 
-# TODO: improve tests
 class TestBM25Retrieval(unittest.TestCase):
     def test_embedding_retrieval_dot_product(self):
         document_store = SingleStoreDocumentStore(
@@ -37,22 +37,24 @@ class TestBM25Retrieval(unittest.TestCase):
         ]
 
         document_store.write_documents(docs)
-        results = document_store._bm25_retrieval(
+
+        retriever = SingleStoreBM25Retriever(document_store=document_store)
+        results = retriever.run(
             query="database",
             top_k=2,
             bm25_function="BM25",
-        )
+        )["documents"]
         assert len(results) == 2
         assert [results[0].content, results[1].content] == [
             "Fundamentals of designing a robust and scalable database.",
             "Learn about various optimization techniques to improve database performance.",
         ]
 
-        results = document_store._bm25_retrieval(
+        results = retriever.run(
             query="database",
             top_k=2,
             bm25_function="BM25_GLOBAL",
-        )
+        )["documents"]
         assert len(results) == 2
         assert [results[0].content, results[1].content] == [
             "Fundamentals of designing a robust and scalable database.",
@@ -66,7 +68,7 @@ class TestBM25Retrieval(unittest.TestCase):
             )
 
         with self.assertRaises(ValueError):
-            document_store._bm25_retrieval(
+            retriever.run(
                 query="database",
                 top_k=2,
                 bm25_function="BM25_WRONG",

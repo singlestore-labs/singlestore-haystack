@@ -4,6 +4,7 @@
 from haystack.dataclasses import Document
 from haystack.utils import Secret
 
+from haystack_integrations.components.retrievers.singlestore_haystack import SingleStoreEmbeddingRetriever
 from haystack_integrations.document_stores.singlestore_haystack import SingleStoreDocumentStore
 from tests.util import DB_HOST, DB_PASSWORD, DB_PORT, DB_USER
 
@@ -29,11 +30,21 @@ class TestEmbeddingRetrieval:
 
         document_store.write_documents(docs)
 
-        results = document_store._embedding_retrieval(
+        retriever = SingleStoreEmbeddingRetriever(document_store=document_store)
+        results = retriever.run(
             query_embedding=query_embedding,
             top_k=1,
             filters={"field": "meta.a", "operator": "!=", "value": 1},
             vector_similarity_function="dot_product",
-        )
+        )["documents"]
         assert len(results) == 1
         assert results[0].content == "2nd best document (dot product)"
+
+        results = retriever.run(
+            query_embedding=query_embedding,
+            top_k=2,
+            vector_similarity_function="euclidean_distance",
+        )["documents"]
+        assert len(results) == 2
+        assert results[0].content == "3rd best document (dot product)"
+        assert results[1].content == "2nd best document (dot product)"
