@@ -368,7 +368,7 @@ class SingleStoreDocumentStore:
         """
         Deletes all documents with a matching document_ids from the document store.
 
-        :param object_ids: the object_ids to delete
+        :param document_ids: document indexes to delete
         """
         if not document_ids:
             return
