@@ -19,6 +19,9 @@ class SingleStoreBM25Retriever:
         if not isinstance(document_store, SingleStoreDocumentStore):
             msg = "document_store must be an instance of SingleStoreDocumentStore"
             raise ValueError(msg)
+        if document_store.use_fulltext_index is False:
+            msg = "SingleStoreBM25Retriever requires 'use_fulltext_index' to be True in the SingleStoreDocumentStore"
+            raise ValueError(msg)
 
         self.document_store = document_store
         self.filters = filters or {}

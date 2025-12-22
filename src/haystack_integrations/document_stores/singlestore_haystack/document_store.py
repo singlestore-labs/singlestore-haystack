@@ -28,9 +28,7 @@ CREATE_TABLE_QUERY = """CREATE TABLE IF NOT EXISTS {} (
     blob_data LONGBLOB,
     blob_meta JSON,
     blob_mime_type TINYTEXT,
-    meta JSON,
-    FULLTEXT USING VERSION 2 fi(content),
-    VECTOR INDEX vi(embedding)
+    meta JSON{}
     )"""
 COUNT_QUERY = "SELECT COUNT(*) AS count FROM {}"
 SELECT_WITH_SCORE_QUERY = "SELECT *, {} AS score FROM {}"
@@ -146,6 +144,12 @@ class SingleStoreDocumentStore:
         table_name: str = "haystack_documents",
         embedding_dimension: int = 768,
         *,
+        use_dot_product_vector_index: bool = True,
+        dot_product_vector_index_options: Optional[dict[str, Any]] = None,
+        use_euclidian_distance_vector_index: bool = True,
+        euclidian_distance_vector_index_options: Optional[dict[str, Any]] = None,
+        use_fulltext_index: bool = True,
+        fulltext_index_options: Optional[dict[str, Any]] = None,
         recreate_table: bool = False,
     ):
         self.connection_string = connection_string
@@ -153,6 +157,12 @@ class SingleStoreDocumentStore:
         self.database_name = database_name
         self.embedding_dimension = embedding_dimension
         self.recreate_table = recreate_table
+        self.use_dot_product_vector_index = use_dot_product_vector_index
+        self.dot_product_vector_index_options = dot_product_vector_index_options
+        self.use_euclidian_distance_vector_index = use_euclidian_distance_vector_index
+        self.euclidian_distance_vector_index_options = euclidian_distance_vector_index_options
+        self.use_fulltext_index = use_fulltext_index
+        self.fulltext_index_options = fulltext_index_options
         self._connection: Union[None, Connection] = None
         self._cursor: Union[None, Cursor] = None
         self._table_initialized = False
@@ -244,13 +254,33 @@ class SingleStoreDocumentStore:
 
         return len(res) > 0
 
+    @staticmethod
+    def _options_to_str(options: Optional[dict[str, Any]], options_type: Literal["INDEX", "SEARCH"] = "INDEX") -> str:
+        if options is None:
+            return ""
+        return f" {options_type}_OPTIONS {escape_string_literal(json.dumps(options))}" if options is not None else ""
+
     def _create_table_if_not_exists(self) -> None:
         """
         Creates the table to store Haystack documents if it doesn't exist yet.
         """
 
+        indexes = []
+        if self.use_fulltext_index:
+            indexes.append(
+                f",\nFULLTEXT USING VERSION 2 fti (content){self._options_to_str(self.fulltext_index_options)}"
+            )
+        if self.use_dot_product_vector_index:
+            options = self.dot_product_vector_index_options or {}
+            options["metric_type"] = "DOT_PRODUCT"
+            indexes.append(f",\nVECTOR INDEX dpvi (embedding){self._options_to_str(options)}")
+        if self.use_euclidian_distance_vector_index:
+            options = self.euclidian_distance_vector_index_options or {}
+            options["metric_type"] = "EUCLIDEAN_DISTANCE"
+            indexes.append(f",\nVECTOR INDEX edvi (embedding){self._options_to_str(options)}")
+
         create_sql = CREATE_TABLE_QUERY.format(
-            escape_table(self.database_name, self.table_name), self.embedding_dimension
+            escape_table(self.database_name, self.table_name), self.embedding_dimension, "".join(indexes)
         )
 
         self._execute_sql(create_sql, error_msg="Could not create table in SingleStoreDocumentStore.")
@@ -432,6 +462,7 @@ class SingleStoreDocumentStore:
         filters: Optional[dict[str, Any]] = None,
         top_k: int = 10,
         vector_similarity_function: Optional[Literal["dot_product", "euclidean_distance"]] = None,
+        vector_search_options: Optional[dict[str, int]] = None,
     ) -> list[Document]:
         """
         Retrieves documents that are most similar to the query embedding using a vector similarity metric.
@@ -452,6 +483,16 @@ class SingleStoreDocumentStore:
                 f"embedding dimension ({self.embedding_dimension})."
             )
             raise ValueError(msg)
+        if self.use_dot_product_vector_index is False and vector_similarity_function == "dot_product":
+            logger.warning(
+                "Dot product vector index is not enabled in the SingleStoreDocumentStore. Performance may be degraded."
+            )
+
+        if self.use_euclidian_distance_vector_index is False and vector_similarity_function == "euclidean_distance":
+            logger.warning(
+                "Euclidean distance vector index is not enabled in the SingleStoreDocumentStore. "
+                "Performance may be degraded."
+            )
 
         # the vector must be a string with this format: "'[3,1,2]'"
         query_embedding_for_singlestore = f"'[{','.join(str(el) for el in query_embedding)}]'"
@@ -471,11 +512,18 @@ class SingleStoreDocumentStore:
         if filters:
             sql_where_clause, params = _convert_filters_to_where_clause_and_params(filters)
 
+        index_hint = ""
+        options_str = self._options_to_str(vector_search_options, "SEARCH")
+        if self.use_dot_product_vector_index and vector_similarity_function == "dot_product":
+            index_hint = f" USE INDEX (dpvi){options_str}"
+        if self.use_euclidian_distance_vector_index and vector_similarity_function == "euclidean_distance":
+            index_hint = f" USE INDEX (edvi){options_str}"
+
         # we always want to return the most similar documents first,
         # so when using euclidean_distance, the sort order must be ASC
         sort_order = "ASC" if vector_similarity_function == "euclidean_distance" else "DESC"
 
-        sql_sort = f" ORDER BY score {sort_order} LIMIT {top_k}"
+        sql_sort = f" ORDER BY score{index_hint} {sort_order} LIMIT {top_k}"
 
         sql_query = sql_select + sql_where_clause + sql_sort
 
