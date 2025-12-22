@@ -71,7 +71,7 @@ class SingleStoreBM25Retriever:
         """
         Retrieve documents from the `SingleStoreDocumentStore`, based on their embeddings.
 
-        :param query: Text of the query. # TODO: explain what query means here
+        :param query: Text of the query. SingleStore supports following operators in the query: https://docs.singlestore.com/cloud/reference/sql-reference/full-text-search-functions/bm-25/#operators
         :param filters: Filters applied to the retrieved Documents. The way runtime filters are applied depends on
                         the `filter_policy` chosen at retriever initialization. See the init method docstring for more
                         details.

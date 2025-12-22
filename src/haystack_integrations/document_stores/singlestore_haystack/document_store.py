@@ -519,7 +519,6 @@ class SingleStoreDocumentStore:
             msg = 'bm25_function must be one of ["BM25", "BM25_GLOBAL"]'
             raise ValueError(msg)
 
-        # TODO: check and understand how this BM25 works
         score_definition = f" {bm25_function}({escape_table(self.database_name, self.table_name)}, 'content:{query}')"
         sql_select = SELECT_WITH_SCORE_QUERY.format(score_definition, escape_table(self.database_name, self.table_name))
 
