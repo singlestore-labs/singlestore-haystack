@@ -135,7 +135,9 @@ def from_s2_to_haystack_documents(res: Result, *, with_score: bool = False) -> l
 
 
 class SingleStoreDocumentStore:
-    # TODO: write comment
+    """
+    A Document Store for SingleStore.
+    """
 
     def __init__(
         self,
@@ -152,6 +154,51 @@ class SingleStoreDocumentStore:
         fulltext_index_options: Optional[dict[str, Any]] = None,
         recreate_table: bool = False,
     ):
+        """
+        Creates a new SingleStoreDocumentStore instance.
+
+        This document store is backed by a SingleStore database and supports
+        hybrid retrieval using vector similarity search (dot product and/or
+        Euclidean distance) as well as full-text search. A dedicated table for
+        storing Haystack documents will be created automatically if it does not
+        already exist.
+
+        :param connection_string: The connection string used to connect to the
+            SingleStore database. This can be defined as an environment variable.
+            Example:
+            `S2_CONN_STR="singlestoredb://USER:PASSWORD@HOST:PORT/DB_NAME"`
+        :param database_name: The name of the database used to store Haystack
+            documents. The database must already exist.
+        :param table_name: The name of the table used to store Haystack documents.
+        :param embedding_dimension: The dimension of the embedding vectors stored
+            in the document store.
+
+        :param use_dot_product_vector_index: Whether to create and use a vector
+            index optimized for dot product similarity. Dot product is typically
+            used for normalized embeddings.
+        :param dot_product_vector_index_options: Optional dictionary containing
+            additional options passed to the dot product vector index creation.
+            See:
+            https://docs.singlestore.com/cloud/reference/sql-reference/vector-functions/vector-indexing/#index-options
+
+        :param use_euclidian_distance_vector_index: Whether to create and use a
+            vector index optimized for Euclidean (L2) distance.
+        :param euclidian_distance_vector_index_options: Optional dictionary
+            containing additional options passed to the Euclidean distance vector
+            index creation. See:
+            https://docs.singlestore.com/cloud/reference/sql-reference/vector-functions/vector-indexing/#index-options
+
+        :param use_fulltext_index: Whether to create and use a full-text index for
+            keyword-based retrieval.
+        :param fulltext_index_options: Optional dictionary containing additional
+            options passed to the full-text index creation. See:
+            https://docs.singlestore.com/db/v9.0/developer-resources/functional-extensions/full-text-version-2-custom-analyzers
+
+        :param recreate_table: Whether to drop and recreate the documents table
+            if it already exists. Setting this to `True` will remove all stored
+            documents and indexes.
+        """
+
         self.connection_string = connection_string
         self.table_name = table_name
         self.database_name = database_name
