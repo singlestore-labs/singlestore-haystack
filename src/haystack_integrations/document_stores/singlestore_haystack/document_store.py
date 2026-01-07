@@ -24,11 +24,11 @@ logger = logging.getLogger(__name__)
 CREATE_TABLE_QUERY = """CREATE TABLE IF NOT EXISTS {} (
     id VARCHAR(128) PRIMARY KEY,
     embedding VECTOR({}, F32),
-    content LONGTEXT,
+    content LONGTEXT COLLATE utf8mb4_general_ci,
     blob_data LONGBLOB,
-    blob_meta JSON,
+    blob_meta JSON COLLATE utf8mb4_general_ci,
     blob_mime_type TINYTEXT,
-    meta JSON{}
+    meta JSON COLLATE utf8mb4_general_ci{}
     )"""
 COUNT_QUERY = "SELECT COUNT(*) AS count FROM {}"
 SELECT_WITH_SCORE_QUERY = "SELECT *, {} AS score FROM {}"
