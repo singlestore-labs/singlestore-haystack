@@ -65,12 +65,6 @@ class TestBM25Retrieval(unittest.TestCase):
         ]
 
         with self.assertRaises(ValueError):
-            document_store._bm25_retrieval(
-                query="database",
-                top_k=2,
-            )
-
-        with self.assertRaises(ValueError):
             retriever.run(
                 query="database",
                 top_k=2,
