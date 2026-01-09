@@ -11,7 +11,7 @@ requires-python = ">=3.9"
 license = "Apache-2.0"
 keywords = []
 authors = [
-    { name = "SingleStore", email = "team@singlestore.com" },
+    { name = "SingleStore", email = "integration@singlestore.com" },
 ]
 classifiers = [
     "License :: OSI Approved :: Apache Software License",

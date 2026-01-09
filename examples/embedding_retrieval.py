@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025-present SingleStore, Inc.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 # Before running this example, ensure you have SingleStore installed.
 # For a quick setup using Docker:
 # docker run \

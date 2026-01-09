@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023-present John Doe <jd@example.com>
+# SPDX-FileCopyrightText: 2025-present SingleStore, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 import json
@@ -508,7 +508,7 @@ class SingleStoreDocumentStore:
         *,
         filters: Optional[dict[str, Any]] = None,
         top_k: int = 10,
-        vector_similarity_function: Optional[Literal["dot_product", "euclidean_distance"]] = None,
+        vector_similarity_function: Literal["dot_product", "euclidean_distance"] = "dot_product",
         vector_search_options: Optional[dict[str, int]] = None,
     ) -> list[Document]:
         """
@@ -544,6 +544,8 @@ class SingleStoreDocumentStore:
         # the vector must be a string with this format: "'[3,1,2]'"
         query_embedding_for_singlestore = f"'[{','.join(str(el) for el in query_embedding)}]'"
 
+        # SingleStore vector operators are used here
+        # https://docs.singlestore.com/cloud/reference/sql-reference/data-types/vector-type/#a-note-on-dot-product-and-euclidean-distance
         if vector_similarity_function == "dot_product":
             score_definition = f"(embedding <*> {query_embedding_for_singlestore})"
         elif vector_similarity_function == "euclidean_distance":
@@ -585,7 +587,7 @@ class SingleStoreDocumentStore:
         query: str,
         filters: Optional[dict[str, Any]] = None,
         top_k: Optional[int] = None,
-        bm25_function: Optional[Literal["BM25", "BM25_GLOBAL"]] = None,
+        bm25_function: Literal["BM25", "BM25_GLOBAL"] = "BM25",
     ) -> list[Document]:
         """
         Retrieves documents that are most similar to `query`, using the BM25 algorithm.
