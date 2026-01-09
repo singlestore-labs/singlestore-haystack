@@ -1,8 +1,12 @@
+# SPDX-FileCopyrightText: 2025-present SingleStore, Inc.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 name: test
 
 on:
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "0 0 * * 0"
   push:
     branches:
       - main
@@ -25,6 +29,8 @@ jobs:
       - name: Get supported versions of Singlestore
         id: get_versions
         uses: singlestore-labs/singlestore-supported-versions@main
+        with:
+          include_rc: true
 
   run:
     needs: fetch-s2-versions

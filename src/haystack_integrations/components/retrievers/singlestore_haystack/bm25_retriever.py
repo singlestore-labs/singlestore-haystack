@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025-present SingleStore, Inc.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 from typing import Any, Literal, Optional, Union
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -69,7 +73,7 @@ class SingleStoreBM25Retriever:
         query: str,
         filters: Optional[dict[str, Any]] = None,
         top_k: Optional[int] = None,
-        bm25_function: Optional[Literal["BM25", "BM25_GLOBAL"]] = "BM25",
+        bm25_function: Literal["BM25", "BM25_GLOBAL"] = "BM25",
     ) -> dict[str, list[Document]]:
         """
         Retrieve documents from the `SingleStoreDocumentStore`, based on their embeddings.

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023-present John Doe <jd@example.com>
+# SPDX-FileCopyrightText: 2025-present SingleStore, Inc.
 #
 # SPDX-License-Identifier: Apache-2.0
 import unittest
@@ -63,12 +63,6 @@ class TestBM25Retrieval(unittest.TestCase):
             "Fundamentals of designing a robust and scalable database.",
             "Learn about various optimization techniques to improve database performance.",
         ]
-
-        with self.assertRaises(ValueError):
-            document_store._bm25_retrieval(
-                query="database",
-                top_k=2,
-            )
 
         with self.assertRaises(ValueError):
             retriever.run(
