@@ -39,42 +39,40 @@
 ## Overview
 
 An integration of the [SingleStore](https://www.singlestore.com/) database
-with [Haystack](https://docs.haystack.deepset.ai/docs/intro)
-by [deepset](https://www.deepset.ai). In
-SingleStore, a [vector index](https://docs.singlestore.com/cloud/reference/sql-reference/vector-functions/vector-indexing/)
-is used to store document embeddings and support efficient approximate nearest neighbor (ANN)–based dense retrieval for semantic use cases such as RAG and similarity search. In contrast, 
-a [full-text search index](https://docs.singlestore.com/cloud/developer-resources/functional-extensions/working-with-full-text-search/) (`VERSION 2`) is used to perform Lucene-compatible, BM25-scored keyword and phrase searches over text and JSON content for traditional text-based retrieval.
+with [Haystack](https://docs.haystack.deepset.ai/docs/intro) by [deepset](https://www.deepset.ai). In SingleStore,
+a [vector index](https://docs.singlestore.com/cloud/reference/sql-reference/vector-functions/vector-indexing/) is used
+to store document embeddings and support efficient approximate nearest neighbor (ANN)–based dense retrieval for semantic
+use cases such as RAG and similarity search. In contrast,
+a [full-text search index](https://docs.singlestore.com/cloud/developer-resources/functional-extensions/working-with-full-text-search/) (
+`VERSION 2`) is used to perform Lucene-compatible, BM25-scored keyword and phrase searches over text and JSON content
+for traditional text-based retrieval.
 
-The `singlestore-haystack` library enables SingleStore as a [DocumentStore](https://docs.haystack.deepset.ai/docs/document-store) by implementing the Haystack [DocumentStore protocol](https://docs.haystack.deepset.ai/docs/document-store#documentstore-protocol)
-methods.
+The `singlestore-haystack` library enables SingleStore as
+a [DocumentStore](https://docs.haystack.deepset.ai/docs/document-store) by implementing the
+Haystack [DocumentStore protocol](https://docs.haystack.deepset.ai/docs/document-store#documentstore-protocol) methods.
 Import the `SingleStoreDocumentStore` implementation from the `singlestore_haystack` package:
 
 ```python
 from singlestore_haystack import SingleStoreDocumentStore
 ```
 
-In addition to `SingleStoreDocumentStore`, the library includes the following haystack components which can be used
-in a
+In addition to `SingleStoreDocumentStore`, the library includes the following haystack components which can be used in a
 pipeline:
 
-- SingleStoreEmbeddingRetriever -
-  is a typical [retriever component](https://docs.haystack.deepset.ai/docs/retrievers) which can be used to query
-  SingleStore vector index and find semantically related Documents. This component uses
+- SingleStoreEmbeddingRetriever - is a typical [retriever component](https://docs.haystack.deepset.ai/docs/retrievers)
+  which can be used to query SingleStore vector index and find semantically related Documents. This component uses
   `SingleStoreDocumentStore` to perform vector similarity search over stored embeddings.
 
-- SingleStoreBM25Retriever -
-  is a retriever component that performs sparse retrieval using the BM25 ranking algorithm.
-  It leverages SingleStore full-text search capabilities to retrieve Documents based on keyword
-  relevance, rather than vector similarity (embeddings). This component uses `SingleStoreDocumentStore` to execute
-  BM25 queries and is well suited for keyword-based and hybrid search scenarios.
+- SingleStoreBM25Retriever - is a retriever component that performs sparse retrieval using the BM25 ranking algorithm.
+  It leverages SingleStore full-text search capabilities to retrieve Documents based on keyword relevance, rather than
+  vector similarity (embeddings). This component uses `SingleStoreDocumentStore` to execute BM25 queries and is well
+  suited for keyword-based and hybrid search scenarios.
 
-The `singlestore-haystack` library
-uses [Python Client](https://pypi.org/project/singlestoredb/) to interact with a SingleStore database and hide
-all complexities under the hood.
+The `singlestore-haystack` library uses [Python Client](https://pypi.org/project/singlestoredb/) to interact with a
+SingleStore database and hide all complexities under the hood.
 
-`SingleStoreDocumentStore` stores Documents as rows in a SingleStore table.
-Embeddings are stored as a [VECTOR](https://docs.singlestore.com/cloud/reference/sql-reference/data-types/vector-type/)
-type column.
+`SingleStoreDocumentStore` stores Documents as rows in a SingleStore table. Embeddings are stored as
+a [VECTOR](https://docs.singlestore.com/cloud/reference/sql-reference/data-types/vector-type/) type column.
 
 ```text
                                          +-----------------------------------+
@@ -98,25 +96,25 @@ type column.
 
 In this diagram:
 
-- `Haystack table` is a SingleStore table used by `SingleStoreDocumentStore` to persist Haystack
-  Document objects as rows.
-- `embedding` is a property of the Document (shown separately in the diagram for clarity) which is stored as a
-  vector of type `VECTOR(n, F32)`.
+- `Haystack table` is a SingleStore table used by `SingleStoreDocumentStore` to persist Haystack Document objects as
+  rows.
+- `embedding` is a property of the Document (shown separately in the diagram for clarity) which is stored as a vector of
+  type `VECTOR(n, F32)`.
 - `content` is a property of the Document (shown separately in the diagram for clarity).
 - `vector indexes` are SingleStore vector indexes created on the `embedding` column to enable efficient search for dense
   retrieval.
-- `fulltext index` is a SingleStore full-text index created on the `content`
-  column to support BM25-based sparse retrieval.
-- `write_documents` represents the operation where Documents are inserted into the table by
-  `SingleStoreDocumentStore`.
-- `retrieve_documents` represents retrieval operations executed by retrievers, such as
-  `SingleStoreEmbeddingRetriever` (vector search) and `SingleStoreBM25Retriever` (full-text search).
+- `fulltext index` is a SingleStore full-text index created on the `content` column to support BM25-based sparse
+  retrieval.
+- `write_documents` represents the operation where Documents are inserted into the table by `SingleStoreDocumentStore`.
+- `retrieve_documents` represents retrieval operations executed by retrievers, such as `SingleStoreEmbeddingRetriever` (
+  vector search) and `SingleStoreBM25Retriever` (full-text search).
 
 `SingleStoreDocumentStore` automatically creates the required vector and full-text indexes if they do not already exist.
-When using `SingleStoreEmbeddingRetriever`, Documents must be embedded before they are written to the database.
-You can use one of the available [Haystack embedders](https://docs.haystack.deepset.ai/docs/embedders) to generate these embeddings.
-For example, the
-[SentenceTransformersDocumentEmbedder](https://docs.haystack.deepset.ai/docs/sentencetransformersdocumentembedder)
+When using `SingleStoreEmbeddingRetriever`, Documents must be embedded before they are written to the database. You can
+use one of the available [Haystack embedders](https://docs.haystack.deepset.ai/docs/embedders) to generate these
+embeddings.
+For example,
+the [SentenceTransformersDocumentEmbedder](https://docs.haystack.deepset.ai/docs/sentencetransformersdocumentembedder)
 can be used in an indexing pipeline to generate document embeddings prior to persisting them in SingleStore.
 
 ## Installation
@@ -134,7 +132,8 @@ pip install singlestore-haystack
 ### Running SingleStore
 
 You must have an active SingleStore deployment to use the components from this package.
-The [SingleStore Dev Image](https://github.com/singlestore-labs/singlestoredb-dev-image) enables you to easily deploy a SingleStore instance locally using a Docker container:
+The [SingleStore Dev Image](https://github.com/singlestore-labs/singlestoredb-dev-image) enables you to easily deploy a
+SingleStore instance locally using a Docker container:
 
 ```bash
 docker run \
@@ -143,12 +142,14 @@ docker run \
     -p 3306:3306 -p 8080:8080 -p 9000:9000 \
     ghcr.io/singlestore-labs/singlestoredb-dev:latest
 ```
-Refer to the [SingleStore Dev Image](https://github.com/singlestore-labs/singlestoredb-dev-image) GitHub repository for more information.
+
+Refer to the [SingleStore Dev Image](https://github.com/singlestore-labs/singlestoredb-dev-image) GitHub repository for
+more information.
 
 ### Writing documents
 
-Once the package is installed and the SingleStore database is running, you can start using `SingleStoreDocumentStore` just like any  
-other document store that supports embeddings.
+Once the package is installed and the SingleStore database is running, you can start using `SingleStoreDocumentStore`
+just like any other document store that supports embeddings.
 
 Set the `S2_CONN_STR` environment variable to your connection string to avoid hardcoding credentials in the code:
 
@@ -166,8 +167,8 @@ document_store = SingleStoreDocumentStore(
 )
 ```
 
-Assuming that you have a list of documents available and an active SingleStore database, you can write the documents to SingleStore.
-For example:
+Assuming that you have a list of documents available and an active SingleStore database, you can write the documents to
+SingleStore. For example:
 
 ```python
 from haystack import Document
@@ -230,8 +231,7 @@ This code converts a Document to a dictionary and renders the following output:
 ```
 
 The data from the dictionary will be used to add a row in SingleStore after you write the document with
-`document_store.write_documents([document])`.
-The following is a representation of the row in SingleStore:
+`document_store.write_documents([document])`. The following is a representation of the row in SingleStore:
 
 ```bash
 singlestore> SET vector_type_project_format = JSON;        
@@ -250,8 +250,8 @@ blob_mime_type: NULL
 
 ```
 
-With Haystack, you can use the [DocumentWriter](https://docs.haystack.deepset.ai/docs/documentwriter) component to
-write Documents into a Document Store. In the following example, we construct a pipeline to write documents to SingleStore
+With Haystack, you can use the [DocumentWriter](https://docs.haystack.deepset.ai/docs/documentwriter) component to write
+Documents into a Document Store. In the following example, we construct a pipeline to write documents to SingleStore
 using
 `SingleStoreDocumentStore`:
 
@@ -288,31 +288,31 @@ print(pipeline.run({"embedder": {"documents": documents}}))
 
 ### Index configuration
 
-`SingleStoreDocumentStore` allows you to control which indexes are created and used in the database.
-Depending on your retrieval strategy, you can enable or disable specific index types and customize their creation
-options.
+`SingleStoreDocumentStore` allows you to control which indexes are created and used in the database. Depending on your
+retrieval strategy, you can enable or disable specific index types and customize their creation options.
 
 #### Dot product vector index
 
-- `use_dot_product_vector_index`  
-  Whether to create and use a vector index optimized for **dot product similarity**.
-  Dot product similarity is typically used with **normalized embeddings**.
+- `use_dot_product_vector_index`
+  Whether to create and use a vector index optimized for **dot product similarity**. Dot product similarity is typically
+  used with **normalized embeddings**.
 
-- `dot_product_vector_index_options`  
-  Optional dictionary containing additional options to pass to the dot product vector index during creation.
-  These options are forwarded directly to SingleStore.  
-  Refer to [Vector Index Options](https://docs.singlestore.com/cloud/reference/sql-reference/vector-functions/vector-indexing/#index-options) for information on supported options.
+- `dot_product_vector_index_options` Optional dictionary containing additional options to pass to the dot product vector
+  index during creation. These options are forwarded directly to SingleStore. Refer
+  to [Vector Index Options](https://docs.singlestore.com/cloud/reference/sql-reference/vector-functions/vector-indexing/#index-options)
+  for information on supported options.
 
 #### Euclidean (L2) distance vector index
 
-- `use_euclidian_distance_vector_index`  
+- `use_euclidian_distance_vector_index`
   Whether to create and use a vector index optimized for **Euclidean (L2) distance**.
   This metric is commonly used when embeddings are **not normalized**.
 
 - `euclidian_distance_vector_index_options`  
-  Optional dictionary containing additional options to pass to the Euclidean distance vector index during 
-  creation. These options are forwarded directly to SingleStore.  
-Refer to [Vector Index Options](https://docs.singlestore.com/cloud/reference/sql-reference/vector-functions/vector-indexing/#index-options) for information on supported options.
+  Optional dictionary containing additional options to pass to the Euclidean distance vector index during
+  creation. These options are forwarded directly to SingleStore. Refer
+  to [Vector Index Options](https://docs.singlestore.com/cloud/reference/sql-reference/vector-functions/vector-indexing/#index-options)
+  for information on supported options.
 
 #### Full-text index
 
@@ -322,20 +322,21 @@ Refer to [Vector Index Options](https://docs.singlestore.com/cloud/reference/sql
 - `fulltext_index_options`  
   Optional dictionary containing additional options to pass to the full-text index during creation, such as
   custom analyzers or tokenization settings.  
-  Refer to [Full-Text Custom Analyzers](https://docs.singlestore.com/db/v9.0/developer-resources/functional-extensions/full-text-version-2-custom-analyzers) for more information.
+  Refer
+  to [Full-Text Custom Analyzers](https://docs.singlestore.com/db/v9.0/developer-resources/functional-extensions/full-text-version-2-custom-analyzers)
+  for more information.
 
 The full-text index is required for keyword-based retrieval using `SingleStoreBM25Retriever`.
 
 #### Hybrid retrieval
 
-Both vector and full-text indexes can be enabled at the same time to support **hybrid retrieval**
-scenarios, where dense (semantic) and sparse (keyword-based) search techniques are combined within
-the same Haystack pipeline.
+Both vector and full-text indexes can be enabled at the same time to support **hybrid retrieval** scenarios, where
+dense (semantic) and sparse (keyword-based) search techniques are combined within the same Haystack pipeline.
 
 ### Retrieving documents
 
-`SingleStoreEmbeddingRetriever` component can be used to retrieve documents from SingleStore by using vector index.
-The following pipeline finds documents using vector index as well
+`SingleStoreEmbeddingRetriever` component can be used to retrieve documents from SingleStore by using vector index. The
+following pipeline finds documents using vector index as well
 as [metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering):
 
 ```python
@@ -398,7 +399,7 @@ print(documents)
 You can find more examples in the
 implementation [repository](https://github.com/singlestore-labs/singlestore-haystack/tree/main/examples):
 
-- [embedding_retrieval.py](https://github.com/singlestore-labs/singlestore-haystack/tree/main/examples/embedding_retrieval.py) -
+- [embedding_retrieval.py](https://github.com/singlestore-labs/singlestore-haystack/tree/main/examples/embedding_retrieval.py)
 - [hybrid_retrieval.py](https://github.com/singlestore-labs/singlestore-haystack/tree/main/examples/hybrid_retrieval.py)
 
 ## License
