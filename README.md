@@ -45,7 +45,8 @@ SingleStore, a [vector index](https://docs.singlestore.com/cloud/reference/sql-r
 is used to store document embeddings and support efficient approximate nearest neighbor (ANN)–based dense retrieval for semantic use cases such as RAG and similarity search. In contrast, 
 a [full-text search index](https://docs.singlestore.com/cloud/developer-resources/functional-extensions/working-with-full-text-search/) (`VERSION 2`) is used to perform Lucene-compatible, BM25-scored keyword and phrase searches over text and JSON content for traditional text-based retrieval.
 
-The library allows using SingleStore as a [DocumentStore](https://docs.haystack.deepset.ai/docs/document-store),
+The `singlestore-haystack` library enables SingleStore as a [DocumentStore](https://docs.haystack.deepset.ai/docs/document-store) by implementing the Haystack [DocumentStore protocol](https://docs.haystack.deepset.ai/docs/document-store#documentstore-protocol)
+methods.
 and implements the required [Protocol](https://docs.haystack.deepset.ai/docs/document-store#documentstore-protocol)
 methods. You can start working with the implementation by importing it from `singlestore_haystack` package:
 
