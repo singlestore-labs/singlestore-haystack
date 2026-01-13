@@ -42,7 +42,7 @@ An integration of the [SingleStore](https://www.singlestore.com/) database
 with [Haystack](https://docs.haystack.deepset.ai/docs/intro)
 by [deepset](https://www.deepset.ai). In
 SingleStore, a [vector index](https://docs.singlestore.com/cloud/reference/sql-reference/vector-functions/vector-indexing/)
-is being used for storing document embeddings and dense retrievals and
+is used to store document embeddings and support efficient approximate nearest neighbor (ANN)–based dense retrieval for semantic use cases such as RAG and similarity search. In contrast, 
 [Full-Text search index](https://docs.singlestore.com/cloud/developer-resources/functional-extensions/working-with-full-text-search/)
 is being used for text-based retrievals.
 
