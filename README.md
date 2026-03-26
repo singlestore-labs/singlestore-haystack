@@ -345,7 +345,7 @@ from typing import List
 from haystack import Document, Pipeline
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
 
-from singlestore_haystack import SingleStoreDocumentStore, SingleStoreEmbeddingRetriever
+from haystack_integrations.document_stores.singlestore_haystack import SingleStoreDocumentStore, SingleStoreEmbeddingRetriever
 
 document_store = SingleStoreDocumentStore(
     database_name="haystack_db",  # The name of the database in SingleStore
